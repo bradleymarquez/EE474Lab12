@@ -1,3 +1,5 @@
+# Brad Marquez, Joseph Rothlin, Aigerim Shintemirova
+# April 13, 2016
 # Lab 1 Makefile
 
 # default target

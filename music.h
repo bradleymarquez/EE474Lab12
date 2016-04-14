@@ -1,5 +1,8 @@
-/*
- * Method headers for music.c
+/* 	music.h
+ * Brad Marquez, Joseph Rothlin, Aigerim Shintemirova
+ * April 13, 2016
+ *
+ * 	Method headers for music.c
  */
 
 #include <stdio.h>
