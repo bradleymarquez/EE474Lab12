@@ -103,41 +103,57 @@ int main() {
 		if (noteSpace == 99) { // Plays a distinct note for each count
 			int note = 200000 + (25000 * count);		
 			soundChange(dirduty, dirT, note, note / 2);
+			usleep(sleepTime);
 		} else if (noteSpace % 2 == 0) { // Plays The Imperial March - John Williams
-			if (count < 4 || count == 5 || count > 7) { 
+			if (count <= 2 || count == 4 || count == 7) { 
 				soundChange(dirduty, dirT, noteA, noteA / 2);
-			} else if (count == 4 || count == 6) {
+				usleep(sleepTime * 7 / 8); // 3/16 note
+				soundChange(dirduty, dirT, 0, 0);
+				usleep(sleepTime / 8);
+			} else if (count == 3 || count == 5) {
 				soundChange(dirduty, dirT, noteF, noteF / 2);
 				usleep(sleepTime * 3 / 4); // 3/16 note
 				soundChange(dirduty, dirT, noteC, noteC / 2);
-			} 	
+				usleep(sleepTime / 4);
+			} else {
+				soundChange(dirduty, dirT, noteA, noteA / 2);
+				usleep(sleepTime);
+			}	
 		} else {
-			if (count < 4 || count > 6) {
+			if (count <= 2) {
 				soundChange(dirduty, dirT, noteE, noteE / 2);
-			} else if (count == 4) {
+				usleep(sleepTime * 7 / 8); // 3/16 note
+				soundChange(dirduty, dirT, 0, 0);
+				usleep(sleepTime / 8);
+			} else if (count == 3) {
 				soundChange(dirduty, dirT, noteF2, noteF2 / 2);
 				usleep(sleepTime * 3 / 4); // 3/16 note
 				soundChange(dirduty, dirT, noteC, noteC / 2);
-			} else if (count == 5) {
+				usleep(sleepTime / 4);
+			} else if (count == 4) {
 				soundChange(dirduty, dirT, noteAb, noteAb / 2);
-			} else if (count == 6){
+				usleep(sleepTime);
+			} else if (count == 5){
 				soundChange(dirduty, dirT, noteF, noteF / 2);
 				usleep(sleepTime * 3 / 4); // 3/16 note
 				soundChange(dirduty, dirT, noteC, noteC / 2);
-			}	
+				usleep(sleepTime / 4);
+			} else if (count == 6) {
+				soundChange(dirduty, dirT, noteA, noteA / 2);
+				usleep(sleepTime);
+			} else {
+				soundChange(dirduty, dirT, noteA, noteA / 2);
+				usleep(sleepTime * 7 / 8); // 3/16 note
+				soundChange(dirduty, dirT, 0, 0);
+				usleep(sleepTime / 8);
+			}
 		}
-			
-		// Delays for the given constant located at the top of the file in microseconds
-		usleep(sleepTime);
 		
 		// Increments time counters
 		count = (count + 1) % 8;
-		if (count == 0) {
+		if (count == 7) {
 			noteSpace = (noteSpace + 1) % 100;
 		}
-		
-		// ensures no sound on program termination
-		soundChange(dirduty, dirT, 0, 0); 
 	}
 
     // Closes all accessed files
@@ -156,10 +172,9 @@ int main() {
 	return 0; 
 }
 
-void soundChange(FILE *dirduty, FILE *dirT, int dutyc, int note) {
+void soundChange(FILE *dirduty, FILE *dirT, int note, int dutyc) {
 	fprintf(dirduty, "%d", dutyc); // make into method
 	fflush(dirduty);
 	fprintf(dirT, "%d", note);
 	fflush(dirT);
 }
-
