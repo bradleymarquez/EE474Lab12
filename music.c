@@ -2,7 +2,8 @@
  * Brad Marquez, Joseph Rothlin, Aigerim Shintemirova
  * 10 / April / 2016
  *
- *	Blinks an external LED from gpio0[8] = x70 pin 27 **************************needs changing ************
+ *	Blinks three external LEDs to represent each bit in a 3-bit down counter
+ *  and plays different notes using pulse width modulation for each stage of the counter
  */
 
 #include <stdio.h>  // for File IO and printf
