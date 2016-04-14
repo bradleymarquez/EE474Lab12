@@ -2,7 +2,7 @@
  * Brad Marquez, Joseph Rothlin, Aigerim Shintemirova
  * 10 / April / 2016
  *
- *	Blinks and external LED from gpio0[8] = x70 pin 27 // needs changing ************
+ *	Blinks and external LED from gpio0[8] = x70 pin 27 **************************needs changing ************
  */
 
 #include <stdio.h>  // for File IO and printf
@@ -20,6 +20,16 @@ const int noteF = 2865330;
 const int noteC = 1912046;
 const int noteE = 1517451;
 const int noteF2 = 1432665;
+const int noteA2 = 1136364;
+const int noteAb2 = 1203934;
+const int noteG2 = 1351370;
+const int noteGb2 = 1275526;
+const int noteBb = 2145186;
+const int noteEb = 1607071;
+const int noteD = 1702620;
+const int noteDb = 1803849;
+const int noteB = 2024783;
+
 void soundChange(FILE*, FILE*, int, int);
 int main() {
 
@@ -86,73 +96,222 @@ int main() {
 	while(1) {
 		
 		// Creates the binary representation of the looping down counter
-		fprintf(val45, "%d", counter[0]);
-		fflush(val45);
-		fprintf(val47, "%d", counter[1]);
-		fflush(val47);
-		fprintf(val27, "%d", counter[2]);
-		fflush(val27);
 		int temp0 = counter[0];
 		int temp1 = counter[1];
 		int temp2 = counter[2];
 		counter[0] = ~temp0;
 		counter[1] = temp0 ^ temp1;
 		counter[2] = (~temp0 & temp2) | (~temp1 & temp2) | (temp0 & temp1 & ~temp2);
+		fprintf(val45, "%d", counter[0]);
+		fflush(val45);
+		fprintf(val47, "%d", counter[1]);
+		fflush(val47);
+		fprintf(val27, "%d", counter[2]);
+		fflush(val27);
 		
 		// Sets note and duty cycle for the Pulse Width Modulation output
-		if (noteSpace == 99) { // Plays a distinct note for each count
-			int note = 200000 + (25000 * count);		
-			soundChange(dirduty, dirT, note, note / 2);
-			usleep(sleepTime);
-		} else if (noteSpace % 2 == 0) { // Plays The Imperial March - John Williams
+ 		// Plays The Imperial March - John Williams
+		if (noteSpace == 0) { // Measures # 1-2
 			if (count <= 2 || count == 4 || count == 7) { 
 				soundChange(dirduty, dirT, noteA, noteA / 2);
-				usleep(sleepTime * 7 / 8); // 3/16 note
-				soundChange(dirduty, dirT, 0, 0);
-				usleep(sleepTime / 8);
+				usleep(sleepTime * 7 / 8); // ~1/4 note
+				soundChange(dirduty, dirT, 0, 0); 
+				usleep(sleepTime / 8); // enunciates seperate notes
 			} else if (count == 3 || count == 5) {
 				soundChange(dirduty, dirT, noteF, noteF / 2);
 				usleep(sleepTime * 3 / 4); // 3/16 note
 				soundChange(dirduty, dirT, noteC, noteC / 2);
-				usleep(sleepTime / 4);
+				usleep(sleepTime / 4); // 1/16 note
 			} else {
 				soundChange(dirduty, dirT, noteA, noteA / 2);
-				usleep(sleepTime);
+				usleep(sleepTime); // 1/4 note
 			}	
-		} else {
+		} else if (noteSpace == 1) { // Measures # 3-4
 			if (count <= 2) {
 				soundChange(dirduty, dirT, noteE, noteE / 2);
-				usleep(sleepTime * 7 / 8); // 3/16 note
+				usleep(sleepTime * 7 / 8);  // ~1/4 note
 				soundChange(dirduty, dirT, 0, 0);
-				usleep(sleepTime / 8);
+				usleep(sleepTime / 8); // enunciates seperate notes
 			} else if (count == 3) {
 				soundChange(dirduty, dirT, noteF2, noteF2 / 2);
 				usleep(sleepTime * 3 / 4); // 3/16 note
 				soundChange(dirduty, dirT, noteC, noteC / 2);
-				usleep(sleepTime / 4);
+				usleep(sleepTime / 4); // 1/16 note
 			} else if (count == 4) {
 				soundChange(dirduty, dirT, noteAb, noteAb / 2);
-				usleep(sleepTime);
+				usleep(sleepTime); // 1/4 note
 			} else if (count == 5){
 				soundChange(dirduty, dirT, noteF, noteF / 2);
 				usleep(sleepTime * 3 / 4); // 3/16 note
 				soundChange(dirduty, dirT, noteC, noteC / 2);
-				usleep(sleepTime / 4);
+				usleep(sleepTime / 4); // 1/16 note
 			} else if (count == 6) {
 				soundChange(dirduty, dirT, noteA, noteA / 2);
-				usleep(sleepTime);
+				usleep(sleepTime); // 1/4 note
 			} else {
 				soundChange(dirduty, dirT, noteA, noteA / 2);
-				usleep(sleepTime * 7 / 8); // 3/16 note
+				usleep(sleepTime * 7 / 8); // ~1/4 note
 				soundChange(dirduty, dirT, 0, 0);
-				usleep(sleepTime / 8);
+				usleep(sleepTime / 8); // enunciates seperate notes
+			}
+		} else if (noteSpace == 2) { // Measures # 5-6
+			if (count == 0 || count == 2) {
+				soundChange(dirduty, dirT, noteA2, noteA2 / 2);
+				usleep(sleepTime * 7 / 8); // ~1/4 note
+				soundChange(dirduty, dirT, 0, 0);
+				usleep(sleepTime / 8); // enunciates seperate notes
+			} else if (count == 1) {
+				soundChange(dirduty, dirT, noteA, noteA / 2);
+				usleep(sleepTime * 3 / 4); // 3/16 note
+				soundChange(dirduty, dirT, 0, 0);
+				usleep(sleepTime / 8); // 1/32 rest
+				soundChange(dirduty, dirT, noteA, noteA / 2);
+				usleep(sleepTime / 8); // 1/32 note
+			} else if (count == 3) {
+				soundChange(dirduty, dirT, noteAb2, noteAb2 / 2);
+				usleep(sleepTime * 3 / 4); // 3/16 note
+				soundChange(dirduty, dirT, noteG2, noteG2 / 2);
+				usleep(sleepTime / 4); // 1/16 note
+			} else if (count == 4) {
+				soundChange(dirduty, dirT, noteGb2, noteGb2 / 2);
+				usleep(sleepTime / 4); // 1/16 note
+				soundChange(dirduty, dirT, noteF2, noteF2 / 2);
+				usleep(sleepTime / 4); // 1/16 note
+				soundChange(dirduty, dirT, noteGb2, noteGb2 / 2);
+				usleep(sleepTime / 2); // 1/8 note
+			} else if (count == 5) {
+				soundChange(dirduty, dirT, 0, 0);
+				usleep(sleepTime / 2); // 1/8 note
+				soundChange(dirduty, dirT, noteBb, noteBb / 2);
+				usleep(sleepTime / 2); // 1/8 note
+			} else if (count == 6) {
+				soundChange(dirduty, dirT, noteEb, noteEb / 2);
+				usleep(sleepTime); // 1/4 note
+			} else if (count == 7) {
+				soundChange(dirduty, dirT, noteD, noteD / 2);
+				usleep(sleepTime / 2); // 1/8 note
+				soundChange(dirduty, dirT, noteDb, noteDb / 2);
+				usleep(sleepTime / 2);// 1/8 note	
+			}
+		} else if (noteSpace == 3) { // Measures # 7-8
+			if (count == 0) {
+				soundChange(dirduty, dirT, noteC, noteC / 2);
+				usleep(sleepTime / 4); // 1/16 note
+				soundChange(dirduty, dirT, noteB, noteB / 2);
+				usleep(sleepTime / 4); // 1/16 note
+				soundChange(dirduty, dirT, noteC, noteC / 2);
+				usleep(sleepTime / 2); // 1/8 note
+			} else if (count == 1) {
+				soundChange(dirduty, dirT, 0, 0);
+				usleep(sleepTime / 2); // 1/8 note
+				soundChange(dirduty, dirT, noteF, noteF / 2);
+				usleep(sleepTime / 2); // 1/8 note
+			} else if (count == 2) {
+				soundChange(dirduty, dirT, noteAb, noteAb / 2);
+				usleep(sleepTime); // 1/4 note
+			} else if (count == 3) {
+				soundChange(dirduty, dirT, noteF, noteF / 2);
+				usleep(sleepTime * 3 / 4); // 3/16 note
+				soundChange(dirduty, dirT, noteA, noteA / 2);
+				usleep(sleepTime / 4); // 1/16 note
+			} else if (count == 4) {
+				soundChange(dirduty, dirT, noteC, noteC / 2);
+				usleep(sleepTime); // 1/4 note
+			} else if (count == 5) {
+				soundChange(dirduty, dirT, noteA, noteA / 2);
+				usleep(sleepTime * 3 / 4); // 3/16 note
+				soundChange(dirduty, dirT, noteC, noteC / 2);
+				usleep(sleepTime / 4); // 1/16 note
+			} else if (count == 6) {
+				soundChange(dirduty, dirT, noteE, noteE / 2);
+				usleep(sleepTime); // 1/4 note
+			} else {
+				soundChange(dirduty, dirT, noteE, noteE / 2);
+				usleep(sleepTime * 7 / 8); // ~1/4 note
+				soundChange(dirduty, dirT, 0, 0);
+				usleep(sleepTime / 8); // enunciates seperate notes	
+			}
+		} else if (noteSpace == 4) { // Measures # 9-10
+			if (count == 0 || count == 2) {
+				soundChange(dirduty, dirT, noteA2, noteA2 / 2);
+				usleep(sleepTime); // 1/4 note
+			} else if (count == 1) {
+				soundChange(dirduty, dirT, noteA, noteA / 2);
+				usleep(sleepTime * 3 / 4); // 3/16 note
+				soundChange(dirduty, dirT, 0, 0);
+				usleep(sleepTime / 16); // enunciates seperate notes
+				soundChange(dirduty, dirT, noteA, noteA / 2);
+				usleep(sleepTime * 3 / 16); // ~1/16 note
+			} else if (count == 3) {
+				soundChange(dirduty, dirT, noteAb2, noteAb2 / 2);
+				usleep(sleepTime / 2); // 1/8 note
+				soundChange(dirduty, dirT, noteG2, noteG2 / 2);
+				usleep(sleepTime / 2); // 1/8 note
+			} else if (count == 4) {
+				soundChange(dirduty, dirT, noteGb2, noteGb2 / 2);
+				usleep(sleepTime / 4); // 1/16 note
+				soundChange(dirduty, dirT, noteF2, noteF2 / 2);
+				usleep(sleepTime / 4); // 1/16 note
+				soundChange(dirduty, dirT, noteGb2, noteGb2 / 2);
+				usleep(sleepTime / 2); // 1/8 note
+			} else if (count == 5) {
+				soundChange(dirduty, dirT, 0, 0);
+				usleep(sleepTime / 2); // 1/8 note
+				soundChange(dirduty, dirT, noteB, noteB / 2);
+				usleep(sleepTime / 2); // 1/8 note
+			} else if (count == 6) {
+				soundChange(dirduty, dirT, noteEb, noteEb / 2);
+				usleep(sleepTime); // 1/4 note
+			} else {
+				soundChange(dirduty, dirT, noteD, noteD / 2);
+				usleep(sleepTime / 2); // 1/8 note
+				soundChange(dirduty, dirT, noteDb, noteDb / 2);
+				usleep(sleepTime / 2); // 1/8 note
+			}
+		} else if (noteSpace == 5) { // Measures # 11 - 12
+			if (count == 0) {
+				soundChange(dirduty, dirT, noteC, noteC / 2);
+				usleep(sleepTime / 4); // 1/16 note
+				soundChange(dirduty, dirT, noteB, noteB / 2);
+				usleep(sleepTime / 4); // 1/16 note
+				soundChange(dirduty, dirT, noteC, noteC / 2);
+				usleep(sleepTime / 2); // 1/8 note
+			} else if (count == 1) {
+				soundChange(dirduty, dirT, 0, 0);
+				usleep(sleepTime / 2); // 1/8 note
+				soundChange(dirduty, dirT, noteF, noteF / 2);
+				usleep(sleepTime / 2); // 1/8 note
+			} else if (count == 2) {
+				soundChange(dirduty, dirT, noteAb, noteAb2 / 2);
+				usleep(sleepTime); // 1/4 note
+			} else if (count == 3) {
+				soundChange(dirduty, dirT, noteF, noteF / 2);
+				usleep(sleepTime * 3 / 4); // 3/16 note
+				soundChange(dirduty, dirT, noteC, noteC / 2);
+				usleep(sleepTime / 4); // 1/16 note
+			} else if (count == 4) {
+				soundChange(dirduty, dirT, noteA, noteA / 2);
+				usleep(sleepTime); // 1/4 note
+			} else if (count == 5) {
+				soundChange(dirduty, dirT, noteF, noteF / 2);
+				usleep(sleepTime * 3 / 4); // 3/16 note
+				soundChange(dirduty, dirT, noteC, noteC / 2);
+				usleep(sleepTime / 4); // 1/16 note
+			} else if (count == 6) {
+				soundChange(dirduty, dirT, noteA, noteA / 2);
+				usleep(sleepTime); // 1/4 note
+			} else {
+				soundChange(dirduty, dirT, noteA, noteA / 2);
+				usleep(sleepTime * 7 / 8); // ~1/4 note
+				soundChange(dirduty, dirT, 0, 0);
+				usleep(sleepTime / 8); // enunciates seperate notes
 			}
 		}
-		
+					
 		// Increments time counters
 		count = (count + 1) % 8;
-		if (count == 7) {
-			noteSpace = (noteSpace + 1) % 100;
+		if (count == 0) {
+			noteSpace = (noteSpace + 1) % 6;
 		}
 	}
 
@@ -173,7 +332,7 @@ int main() {
 }
 
 void soundChange(FILE *dirduty, FILE *dirT, int note, int dutyc) {
-	fprintf(dirduty, "%d", dutyc); // make into method
+	fprintf(dirduty, "%d", dutyc);
 	fflush(dirduty);
 	fprintf(dirT, "%d", note);
 	fflush(dirT);
