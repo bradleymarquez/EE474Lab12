@@ -2,15 +2,17 @@
  * Brad Marquez, Joseph Rothlin, Aigerim Shintemirova
  * 10 / April / 2016
  *
- *	Blinks and external LED from gpio0[8] = x70 pin 27 **************************needs changing ************
+ *	Blinks an external LED from gpio0[8] = x70 pin 27 **************************needs changing ************
  */
 
 #include <stdio.h>  // for File IO and printf
 #include <unistd.h> // for usleep
+#include "music.h"
 
 #define GPIO_PIN_45 45   // LED pin #1 for the down counter
 #define GPIO_PIN_47 47	 // LED pin #2
 #define GPIO_PIN_27 27   // LED pin #3
+
 const int sleepTime = 500000; // delay time in microseconds
 
 // period of notes used in nanoseconds
@@ -30,7 +32,7 @@ const int noteD = 1702620;
 const int noteDb = 1803849;
 const int noteB = 2024783;
 
-void soundChange(FILE*, FILE*, int, int);
+
 int main() {
 
 	// Creates pointers to interface with the files of the Beaglebone
@@ -331,6 +333,9 @@ int main() {
 	return 0; 
 }
 
+// This function takes two files pointes and two ints. note will be written
+// to dirT and dutyc will be written to dirduty. This allows a convenient
+// way to change both the duty cycle and frequency of a PWM pin.
 void soundChange(FILE *dirduty, FILE *dirT, int note, int dutyc) {
 	fprintf(dirduty, "%d", dutyc);
 	fflush(dirduty);
