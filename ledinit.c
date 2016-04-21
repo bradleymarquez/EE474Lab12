@@ -150,7 +150,10 @@ int main() {
 	val14 = fopen("/sys/class/gpio/gpio26/value", "w");
 	fseek(val14, 0, SEEK_SET);
 	
-	// hardcode LED init
+	// hardcode LED init	
+	fprintf(val6, "%d", 0);
+	fflush(val6);
+
 	usleep(20000);
 	
 	fprintf(val4, "%d", 0); // Function Set
@@ -219,6 +222,8 @@ int main() {
 	fprintf(val6, "%d", 0);
 	fflush(val6);
 	
+	usleep(500);
+
 	fprintf(val4, "%d", 0); // Function Set #4
 	fflush(val4);
 	fprintf(val5, "%d", 0);
@@ -228,6 +233,32 @@ int main() {
 	fprintf(val13, "%d", 0);
 	fflush(val13);
 	fprintf(val12, "%d", 1);
+	fflush(val12);
+	fprintf(val11, "%d", 1);
+	fflush(val11);
+	fprintf(val10, "%d", 1);
+	fflush(val10);
+	fprintf(val9, "%d", 0);
+	fflush(val9);
+	fprintf(val6, "%d", 1); // send
+	fflush(val6);
+	usleep(10);
+	fprintf(val6, "%d", 0);
+	fflush(val6);
+	
+	while (busyFlagCheck(dir14, val14)) {
+		usleep(50);
+	}
+
+	/*fprintf(val4, "%d", 0); // Function Set #5
+	fflush(val4);
+	fprintf(val5, "%d", 0);
+	fflush(val5);
+	fprintf(val14, "%d", 0);
+	fflush(val14);
+	fprintf(val13, "%d", 0);
+	fflush(val13);
+	fprintf(val12, "%d", 0);
 	fflush(val12);
 	fprintf(val11, "%d", 1);
 	fflush(val11);
@@ -241,7 +272,58 @@ int main() {
 	fprintf(val6, "%d", 0);
 	fflush(val6);
 	
-	fprintf(val4, "%d", 0); // Display OFF
+	usleep(500);
+
+	fprintf(val4, "%d", 0); // Function Set #6
+	fflush(val4);
+	fprintf(val5, "%d", 0);
+	fflush(val5);
+	fprintf(val14, "%d", 0);
+	fflush(val14);
+	fprintf(val13, "%d", 0);
+	fflush(val13);
+	fprintf(val12, "%d", 0);
+	fflush(val12);
+	fprintf(val11, "%d", 0);
+	fflush(val11);
+	fprintf(val10, "%d", 1);
+	fflush(val10);
+	fprintf(val9, "%d", 1);
+	fflush(val9);
+	fprintf(val6, "%d", 1); // send
+	fflush(val6);
+	usleep(10);
+	fprintf(val6, "%d", 0);
+	fflush(val6);
+	
+	usleep(500);
+
+	fprintf(val4, "%d", 0); // Function Set #7
+	fflush(val4);
+	fprintf(val5, "%d", 0);
+	fflush(val5);
+	fprintf(val14, "%d", 0);
+	fflush(val14);
+	fprintf(val13, "%d", 0);
+	fflush(val13);
+	fprintf(val12, "%d", 0);
+	fflush(val12);
+	fprintf(val11, "%d", 0);
+	fflush(val11);
+	fprintf(val10, "%d", 0);
+	fflush(val10);
+	fprintf(val9, "%d", 1);
+	fflush(val9);
+	fprintf(val8, "%d", 1);
+	fflush(val8);
+	fprintf(val6, "%d", 1); // send
+	fflush(val6);
+	usleep(10);
+	fprintf(val6, "%d", 0);
+	fflush(val6);
+	
+	usleep(500);
+	*/fprintf(val4, "%d", 0); // Display OFF
 	fflush(val4);
 	fprintf(val5, "%d", 0);
 	fflush(val5);
@@ -267,6 +349,10 @@ int main() {
 	fprintf(val6, "%d", 0);
 	fflush(val6);
 	
+	while (busyFlagCheck(dir14, val14)) {
+		usleep(50);
+	}
+
 	fprintf(val4, "%d", 0); // Clear Display
 	fflush(val4);
 	fprintf(val5, "%d", 0);
@@ -293,6 +379,10 @@ int main() {
 	fprintf(val6, "%d", 0);
 	fflush(val6);
 	
+	while (busyFlagCheck(dir14, val14)) {
+		usleep(50);
+	}
+
 	fprintf(val4, "%d", 0); // Enry Mode Set
 	fflush(val4);
 	fprintf(val5, "%d", 0);
@@ -319,6 +409,10 @@ int main() {
 	fprintf(val6, "%d", 0);
 	fflush(val6);
 	
+	while (busyFlagCheck(dir14, val14)) {
+		usleep(50);
+	}
+
 	fprintf(val4, "%d", 0); // Display ON
 	fflush(val4);
 	fprintf(val5, "%d", 0);
@@ -337,7 +431,7 @@ int main() {
 	fflush(val9);
 	fprintf(val8, "%d", 1);
 	fflush(val8);
-	fprintf(val7, "%d", 1);
+	fprintf(val7, "%d", 0);
 	fflush(val7);
 	fprintf(val6, "%d", 1); // send
 	fflush(val6);
@@ -386,4 +480,29 @@ int main() {
 	
 	// returns 0 if program runs all the way through
 	return 0; 
+}
+
+int busyFlagCheck(FILE *dir14, FILE *val14) {
+	fseek(dir14, 0, SEEK_SET);
+	fprintf(dir14, "%s", "in");
+	fflush(dir14);
+	
+	fprintf(val4, "%d", 0); // Reads busy flag
+	fflush(val4);
+	fprintf(val5, "%d", 1);
+	fflush(val5);
+	fprintf(val6, "%d", 1); // send
+	fflush(val6);
+	usleep(10);
+	fprintf(val6, "%d", 0);
+	fflush(val6);
+	
+	usleep(50);
+	
+	int flag = fscanf(val14, "%d");
+	
+	fprintf(dir14, "%s", "out");
+	fflush(dir14);
+	
+	return flag;
 }
