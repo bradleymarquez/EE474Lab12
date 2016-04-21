@@ -64,7 +64,7 @@ int main() {
 	dir4 = fopen("/sys/class/gpio/gpio48/direction", "w");
 	fseek(dir4, 0, SEEK_SET);
 	fprintf(dir4, "%s", "out");
-	fflush(dir45);
+	fflush(dir4);
 	
 	dir5 = fopen("/sys/class/gpio/gpio49/direction", "w");
 	fseek(dir5, 0, SEEK_SET);
