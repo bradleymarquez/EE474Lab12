@@ -1,9 +1,9 @@
 /*	ledinit.c
  * Brad Marquez, Joseph Rothlin, Aigerim Shintemirova
- * 10 / April / 2016
+ * 22 / April / 2016
  *
- *	Blinks three external LEDs to represent each bit in a 3-bit down counter
- *  and plays different notes using pulse width modulation for each stage of the counter
+ *	
+ *  
  */
 
 #include <stdio.h>  // for File IO and printf
@@ -21,7 +21,6 @@
 #define LCD_13 44 // DB6 Pin - GPIO_PIN_44
 #define LCD_14 26 // DB7 Pin - GPIO_PIN_26
 
-const int sleepTime = 500000; // delay time in microseconds
 int main() {
 
 	// Creates pointers to interface with the files of the Beaglebone
