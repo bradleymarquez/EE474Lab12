@@ -21,6 +21,8 @@
 #define LCD_13 44 // DB6 Pin - GPIO_PIN_44
 #define LCD_14 26 // DB7 Pin - GPIO_PIN_26
 
+int busyFlagCheck(FILE* , FILE *, FILE *, FILE *, FILE *);
+void setOut(FILE *);
 int main() {
 
 	// Creates pointers to interface with the files of the Beaglebone
@@ -33,120 +35,56 @@ int main() {
 	// Sets the positions of the streams to the beginning for the GPIO digital pins
 	// and the end for the Pulse Width Modulation output
 	fseek(sys, 0, SEEK_SET); 
-
+	
+	int LCDArray[11] = {LCD_4, LCD_5, LCD_6, LCD_7, LCD_8, LCD_9, LCD_10,
+	LCD_11, LCD_12, LCD_13, LCD_14};
+	
 	// Writes the value corresponding to the GPIO digital pins used
-	fprintf(sys, "%d", LCD_4);
-	fflush(sys);
-	fprintf(sys, "%d", LCD_5);
-	fflush(sys);
-	fprintf(sys, "%d", LCD_6);
-	fflush(sys);
-	fprintf(sys, "%d", LCD_7);
-	fflush(sys);
-	fprintf(sys, "%d", LCD_8);
-	fflush(sys);
-	fprintf(sys, "%d", LCD_9);
-	fflush(sys);
-	fprintf(sys, "%d", LCD_10);
-	fflush(sys);
-	fprintf(sys, "%d", LCD_11);
-	fflush(sys);
-	fprintf(sys, "%d", LCD_12);
-	fflush(sys);
-	fprintf(sys, "%d", LCD_13);
-	fflush(sys);
-	fprintf(sys, "%d", LCD_14);
-	fflush(sys);
+	int i;
+	for (i = 0; i < (sizeof(LCDArray) / sizeof(int)); i = i + 1) {
+		fprintf(sys, "%d", LCDArray[i]);
+		fflush(sys);
+	}
 
 	// Sets the direction of each GPIO to output
 	dir4 = fopen("/sys/class/gpio/gpio48/direction", "w");
-	fseek(dir4, 0, SEEK_SET);
-	fprintf(dir4, "%s", "out");
-	fflush(dir4);
-	
 	dir5 = fopen("/sys/class/gpio/gpio49/direction", "w");
-	fseek(dir5, 0, SEEK_SET);
-	fprintf(dir5, "%s", "out");
-	fflush(dir5);
-
 	dir6 = fopen("/sys/class/gpio/gpio117/direction", "w");
-	fseek(dir6, 0, SEEK_SET);
-	fprintf(dir6, "%s", "out");
-	fflush(dir6);
-	
 	dir7 = fopen("/sys/class/gpio/gpio66/direction", "w");
-	fseek(dir7, 0, SEEK_SET);
-	fprintf(dir7, "%s", "out");
-	fflush(dir7);
-	
 	dir8 = fopen("/sys/class/gpio/gpio69/direction", "w");
-	fseek(dir8, 0, SEEK_SET);
-	fprintf(dir8, "%s", "out");
-	fflush(dir8);
-
 	dir9 = fopen("/sys/class/gpio/gpio45/direction", "w");
-	fseek(dir9, 0, SEEK_SET);
-	fprintf(dir9, "%s", "out");
-	fflush(dir9);
-	
 	dir10 = fopen("/sys/class/gpio/gpio47/direction", "w");
-	fseek(dir10, 0, SEEK_SET);
-	fprintf(dir10, "%s", "out");
-	fflush(dir10);
-	
 	dir11 = fopen("/sys/class/gpio/gpio67/direction", "w");
-	fseek(dir11, 0, SEEK_SET);
-	fprintf(dir11, "%s", "out");
-	fflush(dir11);
-
 	dir12 = fopen("/sys/class/gpio/gpio68/direction", "w");
-	fseek(dir12, 0, SEEK_SET);
-	fprintf(dir12, "%s", "out");
-	fflush(dir12);
-	
 	dir13= fopen("/sys/class/gpio/gpio44/direction", "w");
-	fseek(dir13, 0, SEEK_SET);
-	fprintf(dir13, "%s", "out");
-	fflush(dir13);
-	
 	dir14 = fopen("/sys/class/gpio/gpio26/direction", "w");
-	fseek(dir14, 0, SEEK_SET);
-	fprintf(dir14, "%s", "out");
-	fflush(dir14);
-
+	FILE* dirArray[11] = {dir4, dir5, dir6, dir7, dir8, dir9, dir10, dir11,
+	dir12, dir13, dir14};
+	
+	int j;
+	for (j = 0; j < (sizeof(dirArray) / sizeof(FILE*)); j = j + 1) {
+		setOut(dirArray[j]);
+	}
+	
 	// Opens the file that controls if the pin is high or low
 	val4 = fopen("/sys/class/gpio/gpio48/value", "w");
-	fseek(val4, 0, SEEK_SET);
-
 	val5 = fopen("/sys/class/gpio/gpio49/value", "w");
-	fseek(val5, 0, SEEK_SET);
-	
 	val6 = fopen("/sys/class/gpio/gpio117/value", "w");
-	fseek(val6, 0, SEEK_SET);
-
 	val7 = fopen("/sys/class/gpio/gpio66/value", "w");
-	fseek(val7, 0, SEEK_SET);
-	
 	val8 = fopen("/sys/class/gpio/gpio69/value", "w");
-	fseek(val8, 0, SEEK_SET);
-
 	val9 = fopen("/sys/class/gpio/gpio45/value", "w");
-	fseek(val9, 0, SEEK_SET);
-	
 	val10 = fopen("/sys/class/gpio/gpio47/value", "w");
-	fseek(val10, 0, SEEK_SET);
-
 	val11 = fopen("/sys/class/gpio/gpio67/value", "w");
-	fseek(val11, 0, SEEK_SET);
-	
 	val12 = fopen("/sys/class/gpio/gpio68/value", "w");
-	fseek(val12, 0, SEEK_SET);
-
 	val13 = fopen("/sys/class/gpio/gpio44/value", "w");
-	fseek(val13, 0, SEEK_SET);
-	
 	val14 = fopen("/sys/class/gpio/gpio26/value", "w");
-	fseek(val14, 0, SEEK_SET);
+	FILE* valArray[11] = {val4, val5, val6, val7, val8, val9, val10, val11,
+	val12, val13, val14};
+	
+	int k;
+	for(k = 0; k < (sizeof(valArray) / sizeof(FILE*)); k = k + 1) {
+		fseek(valArray[k], 0, SEEK_SET);
+	}
 	
 	// hardcode LED init	
 	fprintf(val6, "%d", 0);
@@ -244,7 +182,7 @@ int main() {
 	fprintf(val6, "%d", 0);
 	fflush(val6);
 	
-	while (busyFlagCheck(dir14, val14)) {
+	while (busyFlagCheck(dir14, val4, val5, val6, val14)) {
 		usleep(50);
 	}
 
@@ -347,7 +285,7 @@ int main() {
 	fprintf(val6, "%d", 0);
 	fflush(val6);
 	
-	while (busyFlagCheck(dir14, val14)) {
+	while (busyFlagCheck(dir14, val4, val5, val6, val14)) {
 		usleep(50);
 	}
 
@@ -377,7 +315,7 @@ int main() {
 	fprintf(val6, "%d", 0);
 	fflush(val6);
 	
-	while (busyFlagCheck(dir14, val14)) {
+	while (busyFlagCheck(dir14, val4, val5, val6, val14)) {
 		usleep(50);
 	}
 
@@ -407,7 +345,7 @@ int main() {
 	fprintf(val6, "%d", 0);
 	fflush(val6);
 	
-	while (busyFlagCheck(dir14, val14)) {
+	while (busyFlagCheck(dir14, val4, val5, val6, val14)) {
 		usleep(50);
 	}
 
@@ -470,7 +408,7 @@ int main() {
 	return 0; 
 }
 
-int busyFlagCheck(FILE *dir14, FILE *val14) {
+int busyFlagCheck(FILE *dir14, FILE *val4, FILE *val5, FILE *val6, FILE *val14) {
 	fseek(dir14, 0, SEEK_SET);
 	fprintf(dir14, "%s", "in");
 	fflush(dir14);
@@ -493,4 +431,10 @@ int busyFlagCheck(FILE *dir14, FILE *val14) {
 	fflush(dir14);
 	
 	return flag;
+}
+
+void setOut(FILE *dir){
+	fseek(dir, 0, SEEK_SET);
+	fprintf(dir, "%s", "out");
+	fflush(dir);
 }
