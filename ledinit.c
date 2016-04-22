@@ -25,9 +25,8 @@ const int sleepTime = 500000; // delay time in microseconds
 int main() {
 
 	// Creates pointers to interface with the files of the Beaglebone
-	FILE *sys, *RS, *RW, *E, *DB0, *DB1, *DB2, *DB3, *DB4, *DB5, *DB6, *DB7, *dir4, *dir5, *dir6,
-	*dir7, *dir8, *dir9, *dir10, *dir11, *dir12, *dir13, *dir14, *val4, *val5, *val6, *val7, *val8,
-	*val9, *val10, *val11, *val12, *val13, *val14;
+	FILE *sys, *dir4, *dir5, *dir6, *dir7, *dir8, *dir9, *dir10, *dir11, *dir12,
+	*dir13, *dir14, *val4, *val5, *val6, *val7, *val8, *val9, *val10, *val11, *val12, *val13, *val14;
 
 	// Selects the files for writing in GPIO digital pins and the Pulse Width Modulation output
 	sys = fopen("/sys/class/gpio/export", "w");
@@ -445,16 +444,6 @@ int main() {
 
     // Closes all accessed files
 	fclose(sys);
-	fclose(RS);
-	fclose(RW);
-	fclose(E);
-	fclose(DB0);
-	fclose(DB1);
-	fclose(DB2);
-	fclose(DB3);
-	fclose(DB4);
-	fclose(DB6);
-	fclose(DB7);
 	fclose(dir4);
 	fclose(dir5);
 	fclose(dir6);
