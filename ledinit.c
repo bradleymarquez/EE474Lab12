@@ -10,6 +10,18 @@
 #include <unistd.h> // for usleep
 #include <signal.h> // for user termination of the program
 
+#define RS 0
+#define RW 1
+#define E 2
+#define DB0 3
+#define DB1 4
+#define DB2 5
+#define DB3 6
+#define DB4 7
+#define DB5 8
+#define DB6 9
+#define DB7 10
+
 #define LCD_4 48 // RS Pin - GPIO_PIN_48
 #define LCD_5 49 // R/W Pin - GPIO_PIN_49
 #define LCD_6 60 // E Pin - GPIO_PIN_60
@@ -23,6 +35,9 @@
 #define LCD_14 26 // DB7 Pin - GPIO_PIN_26
 static volatile int keepRunning = 1;
 
+void setBus(unsigned char byte, FILE* lcdPins[]);
+void setAddress(unsigned char address, FILE* lcdPins[]);
+void writeChar(unsigned char character, FILE* lcdPins[]);
 int busyFlagCheck(FILE* , FILE *, FILE *, FILE *, FILE *);
 void closeLCD(FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *);
 void initialize(FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *);
@@ -156,11 +171,24 @@ int main() {
 	
 	val14 = fopen("/sys/class/gpio/gpio26/value", "w");
 	fseek(val14, 0, SEEK_SET);
-	
+
+	FILE* lcdPins[11] = {val4, val5, val6, val7, val8, val9, val10, val11, val12, val13, val14};	
+
 	signal(SIGINT, sigHandler);
 	initialize(val4, val5, val6, val7, val8, val9, val10, val11, val12, val13, val14, dir14);
 
-	write0(val4, val5, val6, val7, val8, val9, val10, val11, val12, val13, val14, dir14);
+	while (busyFlagCheck(dir14, val14, val4, val5, val6)) {
+		usleep(1);
+	}
+	
+	// Write 0
+	setAddress((unsigned char) 0x00, lcdPins);
+	
+	while (busyFlagCheck(dir14, val14, val4, val5, val6)) {
+		usleep(1);
+	}
+
+	writeChar((unsigned char) 0x30, lcdPins);
 
 	while(keepRunning) {
 	}
@@ -227,62 +255,6 @@ int busyFlagCheck(FILE *dir14, FILE *val14, FILE *val4, FILE *val5, FILE *val6) 
 	fflush(dir14);
 	
 	return flag;
-}
-
-void write0(FILE *val4, FILE *val5, FILE *val6, FILE *val7, FILE *val8, FILE *val9, FILE *val10, FILE *val11, FILE *val12, FILE *val13, FILE *val14, FILE *dir14) {
-	while (busyFlagCheck(dir14, val14, val4, val5, val6)) {
-		usleep(1);
-	}
-
-	fprintf(val4, "%d", 0); // Set DD RAM Address to 0
-	fflush(val4);
-	fprintf(val5, "%d", 0);
-	fflush(val5);
-	fprintf(val14, "%d", 1);
-	fflush(val14);
-	fprintf(val13, "%d", 0);
-	fflush(val13);
-	fprintf(val12, "%d", 0);
-	fflush(val12);
-	fprintf(val11, "%d", 0);
-	fflush(val11);
-	fprintf(val10, "%d", 0);
-	fflush(val10);
-	fprintf(val9, "%d", 0);
-	fflush(val9);
-	fprintf(val8, "%d", 0);
-	fflush(val8);
-	fprintf(val7, "%d", 0);
-	fflush(val7);
-	send(val6);
-	fflush(val6);
-	
-	while (busyFlagCheck(dir14, val14, val4, val5, val6)) {
-		usleep(1);
-	}
-
-	fprintf(val4, "%d", 1); // Write character to DD Ram
-	fflush(val4);
-	fprintf(val5, "%d", 0);
-	fflush(val5);
-	fprintf(val14, "%d", 0);
-	fflush(val14);
-	fprintf(val13, "%d", 0);
-	fflush(val13);
-	fprintf(val12, "%d", 1);
-	fflush(val12);
-	fprintf(val11, "%d", 1);
-	fflush(val11);
-	fprintf(val10, "%d", 0);
-	fflush(val10);
-	fprintf(val9, "%d", 0);
-	fflush(val9);
-	fprintf(val8, "%d", 0);
-	fflush(val8);
-	fprintf(val7, "%d", 0);
-	fflush(val7);
-	send(val6);
-	fflush(val6);
 }
 
 void closeLCD(FILE *val4, FILE *val5, FILE *val6, FILE *val7, FILE *val8, FILE *val9, FILE *val10, FILE *val11, FILE *val12, FILE *val13, FILE *val14, FILE *dir14) {
@@ -542,9 +514,55 @@ void initialize(FILE *val4, FILE *val5, FILE *val6, FILE *val7, FILE *val8, FILE
 void send(FILE *val6) {
 	fprintf(val6, "%d", 1);
 	fflush(val6);
-	usleep(52);
+	usleep(10);
 	fprintf(val6, "%d", 0);
 	fflush(val6);
-	usleep(53);
+	usleep(10);
 }
 
+void writeChar(unsigned char character, FILE* lcdPins[]) {
+	fprintf(lcdPins[RS], "%d", 1);
+	fflush(lcdPins[RS]);
+	fprintf(lcdPins[RW], "%d", 0);
+	fflush(lcdPins[RW]);
+	setBus(character, lcdPins);
+	send(lcdPins[E]);
+	fflush(lcdPins[E]);
+}
+
+void setAddress(unsigned char address, FILE* lcdPins[]) {
+	fprintf(lcdPins[RS], "%d", 0); // Set DD RAM Address to 0
+	fflush(lcdPins[RS]);
+	fprintf(lcdPins[RW], "%d", 0);
+	fflush(lcdPins[RW]);
+	address |= 0x80;
+	setBus(address, lcdPins);
+	send(lcdPins[E]);
+	fflush(lcdPins[E]);
+}
+
+void setBus(unsigned char byte, FILE* lcdPins[]) {
+	fprintf(lcdPins[DB7], "%d", (byte % 2));
+	fflush(lcdPins[DB7]);
+	byte >> 1;
+	fprintf(lcdPins[DB6], "%d", (byte % 2));
+	fflush(lcdPins[DB6]);
+	byte >> 1;
+	fprintf(lcdPins[DB5], "%d", (byte % 2));
+	fflush(lcdPins[DB5]);
+	byte >> 1;
+	fprintf(lcdPins[DB4], "%d", (byte % 2));
+	fflush(lcdPins[DB4]);
+	byte >> 1;
+	fprintf(lcdPins[DB3], "%d", (byte % 2));
+	fflush(lcdPins[DB3]);
+	byte >> 1;
+	fprintf(lcdPins[DB2], "%d", (byte % 2));
+	fflush(lcdPins[DB2]);
+	byte >> 1;
+	fprintf(lcdPins[DB1], "%d", (byte % 2));
+	fflush(lcdPins[DB1]);
+	byte >> 1;
+	fprintf(lcdPins[DB0], "%d", (byte % 2));
+	fflush(lcdPins[DB0]);
+}
