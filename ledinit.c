@@ -23,7 +23,7 @@
 #define DB7 10
 
 #define LCD_4 48 // RS Pin - GPIO_PIN_48
-#define LCD_5 49 // R/W Pin - GPIO_PIN_49
+#define LCD_5 49 // RW Pin - GPIO_PIN_49
 #define LCD_6 60 // E Pin - GPIO_PIN_60
 #define LCD_7 66 // DB0 Pin - GPIO_PIN_66
 #define LCD_8 69 // DB1 Pin - GPIO_PIN_69
@@ -39,7 +39,7 @@ void setBus(unsigned char byte, FILE* lcdPins[]);
 void setAddress(unsigned char address, FILE* lcdPins[]);
 void writeChar(unsigned char character, FILE* lcdPins[]);
 int busyFlagCheck(FILE* , FILE *, FILE *, FILE *, FILE *);
-void closeLCD(FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *);
+void closeLCD(FILE * lcdPins[], FILE *);
 void initialize(FILE* lcdPins[], FILE *);
 //void setOut(FILE *);
 void sigHandler(int);
@@ -193,7 +193,7 @@ int main() {
 	while(keepRunning) {
 	}
 	
-	closeLCD(val4, val5, val6, val7, val8, val9, val10, val11, val12, val13, val14, dir14);
+	closeLCD(lcdPins, dir14);
     // Closes all accessed files
 	fclose(sys);
 	fclose(dir4);
@@ -265,8 +265,8 @@ void closeLCD(FILE *lcdPins[], FILE *dir14) {
 	
 	fprintf(lcdPins[RS], "%d", 0); // Function Set #1
 	fflush(lcdPins[RS]);
-	fprintf(lcdPins[R/W], "%d", 0);
-	fflush(lcdPins[R/W]);
+	fprintf(lcdPins[RW], "%d", 0);
+	fflush(lcdPins[RW]);
 	
 	setBus((unsigned char) 0x08, lcdPins); // Display OFF
 	send(lcdPins[E]);
@@ -286,8 +286,8 @@ void initialize(FILE* lcdPins[], FILE *dir14) {
 	
 	fprintf(lcdPins[RS], "%d", 0); // Function Set #1
 	fflush(lcdPins[RS]);
-	fprintf(lcdPins[R/W], "%d", 0);
-	fflush(lcdPins[R/W]);
+	fprintf(lcdPins[RW], "%d", 0);
+	fflush(lcdPins[RW]);
 	setBus((unsigned char) 0x30, lcdPins);
 	send(lcdPins[E]);
 	fflush(lcdPins[E]);
@@ -302,7 +302,7 @@ void initialize(FILE* lcdPins[], FILE *dir14) {
 	send(lcdPins[E]); // Function Set #3
 	fflush(lcdPins[E]);
 	
-	while (busyFlagCheck(dir14, lcdPins[DB7], lcdPins[RS], lcdPins[R/W], lcdPins[E])) {
+	while (busyFlagCheck(dir14, lcdPins[DB7], lcdPins[RS], lcdPins[RW], lcdPins[E])) {
 		usleep(1);
 	}
 	
@@ -310,7 +310,7 @@ void initialize(FILE* lcdPins[], FILE *dir14) {
 	send(lcdPins[E]);
 	fflush(lcdPins[E]);
 	
-	while (busyFlagCheck(dir14, lcdPins[DB7], lcdPins[RS], lcdPins[R/W], lcdPins[E])) {
+	while (busyFlagCheck(dir14, lcdPins[DB7], lcdPins[RS], lcdPins[RW], lcdPins[E])) {
 		usleep(1);
 	}
 	
@@ -318,7 +318,7 @@ void initialize(FILE* lcdPins[], FILE *dir14) {
 	send(lcdPins[E]);
 	fflush(lcdPins[E]);
 
-	while (busyFlagCheck(dir14, lcdPins[DB7], lcdPins[RS], lcdPins[R/W], lcdPins[E])) {
+	while (busyFlagCheck(dir14, lcdPins[DB7], lcdPins[RS], lcdPins[RW], lcdPins[E])) {
 		usleep(1);
 	}
 
@@ -326,7 +326,7 @@ void initialize(FILE* lcdPins[], FILE *dir14) {
 	send(lcdPins[E]);
 	fflush(lcdPins[E]);
 	
-	while (busyFlagCheck(dir14, lcdPins[DB7], lcdPins[RS], lcdPins[R/W], lcdPins[E])) {
+	while (busyFlagCheck(dir14, lcdPins[DB7], lcdPins[RS], lcdPins[RW], lcdPins[E])) {
 		usleep(1);
 	}
 
@@ -334,7 +334,7 @@ void initialize(FILE* lcdPins[], FILE *dir14) {
 	send(lcdPins[E]);
 	fflush(lcdPins[E]);
 	
-	while (busyFlagCheck(dir14, lcdPins[DB7], lcdPins[RS], lcdPins[R/W], lcdPins[E])) {
+	while (busyFlagCheck(dir14, lcdPins[DB7], lcdPins[RS], lcdPins[RW], lcdPins[E])) {
 		usleep(1);
 	}
 
