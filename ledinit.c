@@ -40,7 +40,7 @@ void setAddress(unsigned char address, FILE* lcdPins[]);
 void writeChar(unsigned char character, FILE* lcdPins[]);
 int busyFlagCheck(FILE* , FILE *, FILE *, FILE *, FILE *);
 void closeLCD(FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *);
-void initialize(FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *);
+void initialize(FILE* lcdPins[], FILE *);
 //void setOut(FILE *);
 void sigHandler(int);
 void send(FILE *);
@@ -175,7 +175,7 @@ int main() {
 	FILE* lcdPins[11] = {val4, val5, val6, val7, val8, val9, val10, val11, val12, val13, val14};	
 
 	signal(SIGINT, sigHandler);
-	initialize(val4, val5, val6, val7, val8, val9, val10, val11, val12, val13, val14, dir14);
+	initialize(lcdPins, dir14);
 
 	while (busyFlagCheck(dir14, val14, val4, val5, val6)) {
 		usleep(1);
@@ -253,260 +253,94 @@ int busyFlagCheck(FILE *dir14, FILE *val14, FILE *val4, FILE *val5, FILE *val6) 
 	
 	fprintf(dir14, "%s", "out");
 	fflush(dir14);
-	
+	fprintf(val5, "%d", 0);
+	fflush(val5);
 	return flag;
 }
 
-void closeLCD(FILE *val4, FILE *val5, FILE *val6, FILE *val7, FILE *val8, FILE *val9, FILE *val10, FILE *val11, FILE *val12, FILE *val13, FILE *val14, FILE *dir14) {
+void closeLCD(FILE *lcdPins[], FILE *dir14) {
 	while (busyFlagCheck(dir14, val14, val4, val5, val6)) {
 		usleep(1);
 	}
-
-	fprintf(val4, "%d", 0); // Display OFF
-	fflush(val4);
-	fprintf(val5, "%d", 0);
-	fflush(val5);
-	fprintf(val14, "%d", 0);
-	fflush(val14);
-	fprintf(val13, "%d", 0);
-	fflush(val13);
-	fprintf(val12, "%d", 0);
-	fflush(val12);
-	fprintf(val11, "%d", 0);
-	fflush(val11);
-	fprintf(val10, "%d", 1);
-	fflush(val10);
-	fprintf(val9, "%d", 0);
-	fflush(val9);
-	fprintf(val8, "%d", 0);
-	fflush(val8);
-	fprintf(val7, "%d", 0);
-	fflush(val7);
-	send(val6);
-	fflush(val6);
+	
+	fprintf(lcdPins[RS], "%d", 0); // Function Set #1
+	fflush(lcdPins[RS]);
+	fprintf(lcdPins[R/W], "%d", 0);
+	fflush(lcdPins[R/W]);
+	
+	setBus((unsigned char) 0x08, lcdPins); // Display OFF
+	send(lcdPins[E]);
+	fflush(lcdPins[E]);
 
 	while (busyFlagCheck(dir14, val14, val4, val5, val6)) {
 		usleep(1);
 	}
 
-	fprintf(val4, "%d", 0); // Clear Display
-	fflush(val4);
-	fprintf(val5, "%d", 0);
-	fflush(val5);
-	fprintf(val14, "%d", 0);
-	fflush(val14);
-	fprintf(val13, "%d", 0);
-	fflush(val13);
-	fprintf(val12, "%d", 0);
-	fflush(val12);
-	fprintf(val11, "%d", 0);
-	fflush(val11);
-	fprintf(val10, "%d", 0);
-	fflush(val10);
-	fprintf(val9, "%d", 0);
-	fflush(val9);
-	fprintf(val8, "%d", 0);
-	fflush(val8);
-	fprintf(val7, "%d", 1);
-	fflush(val7);
-	send(val6);
-	fflush(val6);
+	setBus((unsigned char) 0x01, lcdPins); // Clear Display
+	send(lcdPins[E]);
+	fflush(lcdPins[E]);
 }
 
-void initialize(FILE *val4, FILE *val5, FILE *val6, FILE *val7, FILE *val8, FILE *val9, FILE *val10, FILE *val11, FILE *val12, FILE *val13, FILE *val14, FILE *dir14) {
-
-	fprintf(val6, "%d", 0);
-	fflush(val6);
-
+void initialize(FILE* lcdPins[], FILE *dir14) {
 	usleep(15001);
 	
-	fprintf(val4, "%d", 0); // Function Set
-	fflush(val4);
-	fprintf(val5, "%d", 0);
-	fflush(val5);
-	fprintf(val14, "%d", 0);
-	fflush(val14);
-	fprintf(val13, "%d", 0);
-	fflush(val13);
-	fprintf(val12, "%d", 1);
-	fflush(val12);
-	fprintf(val11, "%d", 1);
-	fflush(val11);
-	fprintf(val10, "%d", 0);
-	fflush(val10);
-	fprintf(val9, "%d", 0);
-	fflush(val9);
-	fprintf(val8, "%d", 0);
-	fflush(val8);
-	fprintf(val7, "%d", 0);
-	fflush(val7);
-	send(val6);
-	fflush(val6);
+	fprintf(lcdPins[RS], "%d", 0); // Function Set #1
+	fflush(lcdPins[RS]);
+	fprintf(lcdPins[R/W], "%d", 0);
+	fflush(lcdPins[R/W]);
+	setBus((unsigned char) 0x30, lcdPins);
+	send(lcdPins[E]);
+	fflush(lcdPins[E]);
 
 	usleep(4101);
 	
-	fprintf(val4, "%d", 0); // Function Set #2
-	fflush(val4);
-	fprintf(val5, "%d", 0);
-	fflush(val5);
-	fprintf(val14, "%d", 0);
-	fflush(val14);
-	fprintf(val13, "%d", 0);
-	fflush(val13);
-	fprintf(val12, "%d", 1);
-	fflush(val12);
-	fprintf(val11, "%d", 1);
-	fflush(val11);
-	send(val6);
-	fflush(val6);
+	send(lcdPins[E]); // Function Set #4
+	fflush(lcdPins[E]);
 	
 	usleep(101);
 	
-	fprintf(val4, "%d", 0); // Function Set #3
-	fflush(val4);
-	fprintf(val5, "%d", 0);
-	fflush(val5);
-	fprintf(val14, "%d", 0);
-	fflush(val14);
-	fprintf(val13, "%d", 0);
-	fflush(val13);
-	fprintf(val12, "%d", 1);
-	fflush(val12);
-	fprintf(val11, "%d", 1);
-	fflush(val11);
-	send(val6);
-	fflush(val6);
+	send(lcdPins[E]); // Function Set #3
+	fflush(lcdPins[E]);
 	
-	while (busyFlagCheck(dir14, val14, val4, val5, val6)) {
+	while (busyFlagCheck(dir14, lcdPins[DB7], lcdPins[RS], lcdPins[R/W], lcdPins[E])) {
 		usleep(1);
 	}
-
-	fprintf(val4, "%d", 0); // Function Set #4
-	fflush(val4);
-	fprintf(val5, "%d", 0);
-	fflush(val5);
-	fprintf(val14, "%d", 0);
-	fflush(val14);
-	fprintf(val13, "%d", 0);
-	fflush(val13);
-	fprintf(val12, "%d", 1);
-	fflush(val12);
-	fprintf(val11, "%d", 1);
-	fflush(val11);
-	fprintf(val10, "%d", 1); // # of lines ~ 1 = 2 lines, 0 = 1 line
-	fflush(val10);
-	fprintf(val9, "%d", 0); // Display font ~ 0 = 5x7 dots, 1 = 5x10 dots
-	fflush(val9);
-	send(val6);
-	fflush(val6);
 	
-	while (busyFlagCheck(dir14, val14, val4, val5, val6)) {
-		usleep(1);
-	}
-
-	fprintf(val4, "%d", 0); // Display OFF
-	fflush(val4);
-	fprintf(val5, "%d", 0);
-	fflush(val5);
-	fprintf(val14, "%d", 0);
-	fflush(val14);
-	fprintf(val13, "%d", 0);
-	fflush(val13);
-	fprintf(val12, "%d", 0);
-	fflush(val12);
-	fprintf(val11, "%d", 0);
-	fflush(val11);
-	fprintf(val10, "%d", 1);
-	fflush(val10);
-	fprintf(val9, "%d", 0);
-	fflush(val9);
-	fprintf(val8, "%d", 0);
-	fflush(val8);
-	fprintf(val7, "%d", 0);
-	fflush(val7);
-	send(val6);
-	fflush(val6);
-
-	while (busyFlagCheck(dir14, val14, val4, val5, val6)) {
-		usleep(1);
-	}
-
-	fprintf(val4, "%d", 0); // Clear Display
-	fflush(val4);
-	fprintf(val5, "%d", 0);
-	fflush(val5);
-	fprintf(val14, "%d", 0);
-	fflush(val14);
-	fprintf(val13, "%d", 0);
-	fflush(val13);
-	fprintf(val12, "%d", 0);
-	fflush(val12);
-	fprintf(val11, "%d", 0);
-	fflush(val11);
-	fprintf(val10, "%d", 0);
-	fflush(val10);
-	fprintf(val9, "%d", 0);
-	fflush(val9);
-	fprintf(val8, "%d", 0);
-	fflush(val8);
-	fprintf(val7, "%d", 1);
-	fflush(val7);
-	send(val6);
-	fflush(val6);
+	setBus((unsigned char) 0x38, lcdPins); // Function Set #4
+	send(lcdPins[E]);
+	fflush(lcdPins[E]);
 	
-	while (busyFlagCheck(dir14, val14, val4, val5, val6)) {
+	while (busyFlagCheck(dir14, lcdPins[DB7], lcdPins[RS], lcdPins[R/W], lcdPins[E])) {
 		usleep(1);
 	}
-
-	fprintf(val4, "%d", 0); // Enry Mode Set
-	fflush(val4);
-	fprintf(val5, "%d", 0);
-	fflush(val5);
-	fprintf(val14, "%d", 0);
-	fflush(val14);
-	fprintf(val13, "%d", 0);
-	fflush(val13);
-	fprintf(val12, "%d", 0);
-	fflush(val12);
-	fprintf(val11, "%d", 0);
-	fflush(val11);
-	fprintf(val10, "%d", 0);
-	fflush(val10);
-	fprintf(val9, "%d", 1);
-	fflush(val9);
-	fprintf(val8, "%d", 1); // Increment Mode ~ 1 = ON, 0 = OFF
-	fflush(val8);
-	fprintf(val7, "%d", 0); // Entire Shift ~ 1 = ON, 0 = OFF
-	fflush(val7);
-	send(val6);
-	fflush(val6);
 	
-	while (busyFlagCheck(dir14, val14, val4, val5, val6)) {
+	setBus((unsigned char) 0x08, lcdPins); // Display OFF
+	send(lcdPins[E]);
+	fflush(lcdPins[E]);
+
+	while (busyFlagCheck(dir14, lcdPins[DB7], lcdPins[RS], lcdPins[R/W], lcdPins[E])) {
 		usleep(1);
 	}
 
-	fprintf(val4, "%d", 0); // Display ON
-	fflush(val4);
-	fprintf(val5, "%d", 0);
-	fflush(val5);
-	fprintf(val14, "%d", 0);
-	fflush(val14);
-	fprintf(val13, "%d", 0);
-	fflush(val13);
-	fprintf(val12, "%d", 0);
-	fflush(val12);
-	fprintf(val11, "%d", 0);
-	fflush(val11);
-	fprintf(val10, "%d", 1);
-	fflush(val10);
-	fprintf(val9, "%d", 1);
-	fflush(val9);
-	fprintf(val8, "%d", 1); // Cursor ~ 1 = ON, 0 = OFF
-	fflush(val8);
-	fprintf(val7, "%d", 1); // Blink ~ 1 = ON, 0 = OFF
-	fflush(val7);
-	send(val6);
-	fflush(val6);
+	setBus((unsigned char) 0x01, lcdPins); // Clear Display
+	send(lcdPins[E]);
+	fflush(lcdPins[E]);
+	
+	while (busyFlagCheck(dir14, lcdPins[DB7], lcdPins[RS], lcdPins[R/W], lcdPins[E])) {
+		usleep(1);
+	}
+
+	setBus((unsigned char) 0x0c, lcdPins); // Entry Mode Set
+	send(lcdPins[E]);
+	fflush(lcdPins[E]);
+	
+	while (busyFlagCheck(dir14, lcdPins[DB7], lcdPins[RS], lcdPins[R/W], lcdPins[E])) {
+		usleep(1);
+	}
+
+	setBus((unsigned char) 0x0f, lcdPins);
+	send(lcdPins[E]);
+	fflush(lcdPins[E]);
 }
 
 
