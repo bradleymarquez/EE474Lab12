@@ -33,15 +33,15 @@
 #define LCD_12 68 // DB5 Pin - GPIO_PIN_68
 #define LCD_13 44 // DB6 Pin - GPIO_PIN_44
 #define LCD_14 26 // DB7 Pin - GPIO_PIN_26
+#define TEST 112
+
 static volatile int keepRunning = 1;
 
 void setBus(unsigned char byte, FILE* lcdPins[]);
 void setAddress(unsigned char address, FILE* lcdPins[]);
 void writeChar(unsigned char character, FILE* lcdPins[]);
-int busyFlagCheck(FILE* , FILE *, FILE *, FILE *, FILE *);
-void closeLCD(FILE * lcdPins[], FILE *);
-void initialize(FILE* lcdPins[], FILE *);
-//void setOut(FILE *);
+void closeLCD(FILE *lcdPins[], FILE *);
+void initialize(FILE *lcdPins[], FILE *);
 void sigHandler(int);
 void send(FILE *);
 void write0(FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *);
@@ -49,13 +49,10 @@ int main() {
 
 	// Creates pointers to interface with the files of the Beaglebone
 	FILE *sys, *dir4, *dir5, *dir6, *dir7, *dir8, *dir9, *dir10, *dir11, *dir12,
-	*dir13, *dir14, *val4, *val5, *val6, *val7, *val8, *val9, *val10, *val11, *val12, *val13, *val14;
+	*dir13, *dir14, *dirTest, *val4, *val5, *val6, *val7, *val8, *val9, *val10, *val11, *val12, *val13, *val14, *test;
 
 	// Selects the files for writing in GPIO digital pins and the Pulse Width Modulation output
 	sys = fopen("/sys/class/gpio/export", "w");
-   
-	// Sets the positions of the streams to the beginning for the GPIO digital pins
-	// and the end for the Pulse Width Modulation output
 	fseek(sys, 0, SEEK_SET); 
 
 	// Writes the value corresponding to the GPIO digital pins used
@@ -80,6 +77,8 @@ int main() {
 	fprintf(sys, "%d", LCD_13);
 	fflush(sys);
 	fprintf(sys, "%d", LCD_14);
+	fflush(sys);
+	fprintf(sys, "%d", TEST);
 	fflush(sys);
 
 	// Sets the direction of each GPIO to output
@@ -138,6 +137,11 @@ int main() {
 	fprintf(dir14, "%s", "out");
 	fflush(dir14);
 
+	dirTest = fopen("/sys/class/gpio/gpio112/direction", "w");
+	fseek(dirTest, 0, SEEK_SET);
+	fprintf(dirTest, "%s", "out");
+	fflush(dirTest);
+
 	// Opens the file that controls if the pin is high or low
 	val4 = fopen("/sys/class/gpio/gpio48/value", "w");
 	fseek(val4, 0, SEEK_SET);
@@ -172,24 +176,28 @@ int main() {
 	val14 = fopen("/sys/class/gpio/gpio26/value", "w");
 	fseek(val14, 0, SEEK_SET);
 
+	test = fopen("/sys/class/gpio/gpio112/value", "w");
+	fseek(test, 0, SEEK_SET);
+	
+	fprintf(test, "%d", 0);
+	fflush(test);
+
 	FILE* lcdPins[11] = {val4, val5, val6, val7, val8, val9, val10, val11, val12, val13, val14};	
 
 	signal(SIGINT, sigHandler);
 	initialize(lcdPins, dir14);
 
-	while (busyFlagCheck(dir14, val14, val4, val5, val6)) {
-		usleep(1);
-	}
-	
+	usleep(1000);
+
 	// Write 0
 	setAddress((unsigned char) 0x00, lcdPins);
-	
-	while (busyFlagCheck(dir14, val14, val4, val5, val6)) {
-		usleep(1);
-	}
 
+	usleep(1000);
 	writeChar((unsigned char) 0x30, lcdPins);
-
+	
+	fprintf(test, "%d", 1);
+	fflush(test);	
+	
 	while(keepRunning) {
 	}
 	
@@ -231,50 +239,20 @@ void sigHandler(int signo) {
 	}
 }
 
-int busyFlagCheck(FILE *dir14, FILE *val14, FILE *val4, FILE *val5, FILE *val6) {
-	fseek(dir14, 0, SEEK_SET);
-	fprintf(dir14, "%s", "in");
-	fflush(dir14);
-	
-	fprintf(val4, "%d", 0); // Reads busy flag
-	fflush(val4);
-	fprintf(val5, "%d", 1);
-	fflush(val5);
-	fprintf(val6, "%d", 1); // send
-	fflush(val6);
-	usleep(10);
-	fprintf(val6, "%d", 0);
-	fflush(val6);
-	
-	usleep(50);
-	
-	int flag;
-	fscanf(val14, "%d", &flag);
-	
-	fprintf(dir14, "%s", "out");
-	fflush(dir14);
-	fprintf(val5, "%d", 0);
-	fflush(val5);
-	return flag;
-}
 
 void closeLCD(FILE *lcdPins[], FILE *dir14) {
-	while (busyFlagCheck(dir14, val14, val4, val5, val6)) {
-		usleep(1);
-	}
+	usleep(500);
 	
 	fprintf(lcdPins[RS], "%d", 0); // Function Set #1
 	fflush(lcdPins[RS]);
 	fprintf(lcdPins[RW], "%d", 0);
 	fflush(lcdPins[RW]);
-	
+	usleep(500);
 	setBus((unsigned char) 0x08, lcdPins); // Display OFF
 	send(lcdPins[E]);
 	fflush(lcdPins[E]);
 
-	while (busyFlagCheck(dir14, val14, val4, val5, val6)) {
-		usleep(1);
-	}
+	usleep(500);
 
 	setBus((unsigned char) 0x01, lcdPins); // Clear Display
 	send(lcdPins[E]);
@@ -302,46 +280,39 @@ void initialize(FILE* lcdPins[], FILE *dir14) {
 	send(lcdPins[E]); // Function Set #3
 	fflush(lcdPins[E]);
 	
-	while (busyFlagCheck(dir14, lcdPins[DB7], lcdPins[RS], lcdPins[RW], lcdPins[E])) {
-		usleep(1);
-	}
-	
+	usleep(500);
+
 	setBus((unsigned char) 0x38, lcdPins); // Function Set #4
 	send(lcdPins[E]);
 	fflush(lcdPins[E]);
 	
-	while (busyFlagCheck(dir14, lcdPins[DB7], lcdPins[RS], lcdPins[RW], lcdPins[E])) {
-		usleep(1);
-	}
-	
+	usleep(500);
+
 	setBus((unsigned char) 0x08, lcdPins); // Display OFF
 	send(lcdPins[E]);
 	fflush(lcdPins[E]);
 
-	while (busyFlagCheck(dir14, lcdPins[DB7], lcdPins[RS], lcdPins[RW], lcdPins[E])) {
-		usleep(1);
-	}
+	usleep(500);
 
 	setBus((unsigned char) 0x01, lcdPins); // Clear Display
 	send(lcdPins[E]);
 	fflush(lcdPins[E]);
 	
-	while (busyFlagCheck(dir14, lcdPins[DB7], lcdPins[RS], lcdPins[RW], lcdPins[E])) {
-		usleep(1);
-	}
+	usleep(500);
 
 	setBus((unsigned char) 0x0c, lcdPins); // Entry Mode Set
 	send(lcdPins[E]);
 	fflush(lcdPins[E]);
 	
-	while (busyFlagCheck(dir14, lcdPins[DB7], lcdPins[RS], lcdPins[RW], lcdPins[E])) {
-		usleep(1);
-	}
+	usleep(500);
 
 	setBus((unsigned char) 0x0f, lcdPins);
 	send(lcdPins[E]);
 	fflush(lcdPins[E]);
+
+	usleep(500);
 }
+
 
 
 // Flips designated "send" GPIO from on to off, which signals the LCD to take in an instruction
@@ -362,6 +333,7 @@ void writeChar(unsigned char character, FILE* lcdPins[]) {
 	setBus(character, lcdPins);
 	send(lcdPins[E]);
 	fflush(lcdPins[E]);
+	usleep(50);
 }
 
 void setAddress(unsigned char address, FILE* lcdPins[]) {
@@ -373,30 +345,31 @@ void setAddress(unsigned char address, FILE* lcdPins[]) {
 	setBus(address, lcdPins);
 	send(lcdPins[E]);
 	fflush(lcdPins[E]);
+	usleep(50);
 }
 
 void setBus(unsigned char byte, FILE* lcdPins[]) {
-	fprintf(lcdPins[DB7], "%d", (byte % 2));
-	fflush(lcdPins[DB7]);
-	byte >> 1;
-	fprintf(lcdPins[DB6], "%d", (byte % 2));
-	fflush(lcdPins[DB6]);
-	byte >> 1;
-	fprintf(lcdPins[DB5], "%d", (byte % 2));
-	fflush(lcdPins[DB5]);
-	byte >> 1;
-	fprintf(lcdPins[DB4], "%d", (byte % 2));
-	fflush(lcdPins[DB4]);
-	byte >> 1;
-	fprintf(lcdPins[DB3], "%d", (byte % 2));
-	fflush(lcdPins[DB3]);
-	byte >> 1;
-	fprintf(lcdPins[DB2], "%d", (byte % 2));
-	fflush(lcdPins[DB2]);
-	byte >> 1;
-	fprintf(lcdPins[DB1], "%d", (byte % 2));
-	fflush(lcdPins[DB1]);
-	byte >> 1;
 	fprintf(lcdPins[DB0], "%d", (byte % 2));
 	fflush(lcdPins[DB0]);
+	byte  = byte >> 1;
+	fprintf(lcdPins[DB1], "%d", (byte % 2));
+	fflush(lcdPins[DB1]);
+	byte  = byte >> 1;
+	fprintf(lcdPins[DB2], "%d", (byte % 2));
+	fflush(lcdPins[DB2]);
+	byte  = byte >> 1;
+	fprintf(lcdPins[DB3], "%d", (byte % 2));
+	fflush(lcdPins[DB3]);
+	byte  = byte >> 1;
+	fprintf(lcdPins[DB4], "%d", (byte % 2));
+	fflush(lcdPins[DB4]);
+	byte  = byte >> 1;
+	fprintf(lcdPins[DB5], "%d", (byte % 2));
+	fflush(lcdPins[DB5]);
+	byte  = byte >> 1;
+	fprintf(lcdPins[DB6], "%d", (byte % 2));
+	fflush(lcdPins[DB6]);
+	byte  = byte >> 1;
+	fprintf(lcdPins[DB7], "%d", (byte % 2));
+	fflush(lcdPins[DB7]);
 }
