@@ -102,10 +102,10 @@ int main() {
 
     // Closes all accessed files
 	fclose(sys);
-	for (j = 0; j < (sizeof(dirArray) / sizeof(FILE*)); j = j + 1) {
+	for (j = 0; j < 11; j++) {
 		fclose(dirArray[j]);
 	}
-	for (k = 0; k < (sizeof(valArray) / sizeof(FILE*)); k = k + 1) {
+	for (k = 0; k < 11; k++) {
 		fclose(valArray[k]);
 	}
 	
@@ -115,9 +115,11 @@ int main() {
 
 // Software initializes the LCD for use, in case the internal power supply reset timing of the LCD is not met
 void initialize(FILE *val4, FILE *val5, FILE *val6, FILE *val7, FILE *val8, FILE *val9, FILE *val10, FILE *val11, FILE *val12, FILE *val13, FILE *val14, FILE *dir14) {
+	fprintf(val6, "%d", 0):
+	fflush(val6);
 	
 	// hardcode LED init	
-	usleep(15001); // Wait for more than 15ms after Vcc = 4.5 V
+	usleep(20000); // Wait for more than 15ms after Vcc = 4.5 V
 	
 	fprintf(val4, "%d", 0); // Function Set
 	fflush(val4);
@@ -131,21 +133,66 @@ void initialize(FILE *val4, FILE *val5, FILE *val6, FILE *val7, FILE *val8, FILE
 	fflush(val12);
 	fprintf(val11, "%d", 1);
 	fflush(val11);
-	send(val6);
+	fprintf(val10, "%d", 0);
+	fflush(val10);
+	fprintf(val9, "%d", 0);
+	fflush(val9);
+	fprintf(val8, "%d", 0);
+	fflush(val8);
+	fprintf(val7, "%d", 0);
+	fflush(val7);
+	fprintf(val6, "%d", 1);
+	fflush(val6);
+	usleep(10);
+	fprintf(val6, "%d", 0);
+	fflush(val6);
 	
-	usleep(4101); // Wait more than 4.1 ms
-	 
-	send(val6); // Function Set #2
-	
-	usleep(101); // Wait more than 100 us
+	usleep(5000);
 
-	send(val6); // Function Set #3
-	
-	while (busyFlagCheck(dir14, val4, val5, val6, val14)) {
-		usleep(1);
-	}
 
-	fprintf(val4, "%d", 0); // Function Set # 4
+
+
+	fprintf(val4, "%d", 0); // Function Set #2
+	fflush(val4);
+	fprintf(val5, "%d", 0);
+	fflush(val5);
+	fprintf(val14, "%d", 0);
+	fflush(val14);
+	fprintf(val13, "%d", 0);
+	fflush(val13);
+	fprintf(val12, "%d", 1);
+	fflush(val12);
+	fprintf(val11, "%d", 1);
+	fflush(val11);
+	fprintf(val6, "%d", 1);
+	fflush(val6);
+	usleep(10);
+	fprintf(val6, "%d", 0);
+	fflush(val6);
+	
+	usleep(200);
+	
+	fprintf(val4, "%d", 0); // Function Set #3
+	fflush(val4);
+	fprintf(val5, "%d", 0);
+	fflush(val5);
+	fprintf(val14, "%d", 0);
+	fflush(val14);
+	fprintf(val13, "%d", 0);
+	fflush(val13);
+	fprintf(val12, "%d", 1);
+	fflush(val12);
+	fprintf(val11, "%d", 1);
+	fflush(val11);
+	fprintf(val6, "%d", 1);
+	fflush(val6);
+	usleep(10);
+	fprintf(val6, "%d", 0);
+	fflush(val6);
+	
+	usleep(500);
+
+	fprintf(val4, "%d", 0); // Function Set #4
 	fflush(val4);
 	fprintf(val5, "%d", 0);
 	fflush(val5);
@@ -158,12 +205,15 @@ void initialize(FILE *val4, FILE *val5, FILE *val6, FILE *val7, FILE *val8, FILE
 	fprintf(val11, "%d", 1);
 	fflush(val11);
 	fprintf(val10, "%d", 1);
-	fflush(val10); // # of lines ~ 1 = "2 lines
-	fprintf(val9, "%d", 0); // display font ~ 0 = "5x7 dots"
+	fflush(val10);
+	fprintf(val9, "%d", 0);
 	fflush(val9);
-	send(val6);
-	
-	while (busyFlagCheck(dir14, val4, val5, val6, val14)) {
+	fprintf(val6, "%d", 1); // send
+	fflush(val6);
+	usleep(10);
+	fprintf(val6, "%d", 0);
+
+	fflush(val6);	while (busyFlagCheck(dir14, val4, val5, val6, val14)) {
 		usleep(1);
 	}
 	
@@ -187,13 +237,17 @@ void initialize(FILE *val4, FILE *val5, FILE *val6, FILE *val7, FILE *val8, FILE
 	fflush(val8);
 	fprintf(val7, "%d", 0);
 	fflush(val7);
-	send(val6);
+	fprintf(val6, "%d", 1); // send
+	fflush(val6);
+	usleep(10);
+	fprintf(val6, "%d", 0);
+	fflush(val6);
 	
 	while (busyFlagCheck(dir14, val4, val5, val6, val14)) {
 		usleep(1);
 	}
-
-	fprintf(val4, "%d", 0); // Clear display
+	
+	fprintf(val4, "%d", 0); // Clear Display
 	fflush(val4);
 	fprintf(val5, "%d", 0);
 	fflush(val5);
@@ -213,13 +267,17 @@ void initialize(FILE *val4, FILE *val5, FILE *val6, FILE *val7, FILE *val8, FILE
 	fflush(val8);
 	fprintf(val7, "%d", 1);
 	fflush(val7);
-	send(val6);
-	
-	while (busyFlagCheck(dir14, val4, val5, val6, val14)) {
-		usleep(1);
+	fprintf(val6, "%d", 1); // send
+	fflush(val6);
+	usleep(10);
+	fprintf(val6, "%d", 0);
+	fflush(val6);
+
+	while (busyFlagCheck(dir14, val14, val4, val5, val6)) {
+		usleep(50);
 	}
-	
-	fprintf(val4, "%d", 0); // Entry Mode Set
+
+	fprintf(val4, "%d", 0); // Enry Mode Set
 	fflush(val4);
 	fprintf(val5, "%d", 0);
 	fflush(val5);
@@ -235,17 +293,21 @@ void initialize(FILE *val4, FILE *val5, FILE *val6, FILE *val7, FILE *val8, FILE
 	fflush(val10);
 	fprintf(val9, "%d", 1);
 	fflush(val9);
-	fprintf(val8, "%d", 1); // Increment Mode ~ 1 = ON
+	fprintf(val8, "%d", 1);
 	fflush(val8);
-	fprintf(val7, "%d", 0); // Entire Shift ~ 0 = OFF
+	fprintf(val7, "%d", 0);
 	fflush(val7);
-	send(val6);
+	fprintf(val6, "%d", 1); // send
+	fflush(val6);
+	usleep(10);
+	fprintf(val6, "%d", 0);
+	fflush(val6);
 	
-	while (busyFlagCheck(dir14, val4, val5, val6, val14)) {
-		usleep(1);
+	while (busyFlagCheck(dir14, val14, val4, val5, val6)) {
+		usleep(50);
 	}
-	
-	fprintf(val4, "%d", 0); // Clear display
+
+	fprintf(val4, "%d", 0); // Display ON
 	fflush(val4);
 	fprintf(val5, "%d", 0);
 	fflush(val5);
@@ -261,11 +323,15 @@ void initialize(FILE *val4, FILE *val5, FILE *val6, FILE *val7, FILE *val8, FILE
 	fflush(val10);
 	fprintf(val9, "%d", 1);
 	fflush(val9);
-	fprintf(val8, "%d", 1); // Cursor ~ 1 = ON
+	fprintf(val8, "%d", 1);
 	fflush(val8);
-	fprintf(val7, "%d", 1); // Blink ~ 1 = ON
+	fprintf(val7, "%d", 0);
 	fflush(val7);
-	send(val6);
+	fprintf(val6, "%d", 1); // send
+	fflush(val6);
+	usleep(10);
+	fprintf(val6, "%d", 0);
+	fflush(val6);
 }
 
 // Reads the busy flag on the LCD to see whether it is safe to write
@@ -298,9 +364,10 @@ void setOut(FILE *dir){
 
 // Sets the LCD to its off state if Ctrl+C (signal interrupt) is passed by the user
 void sigHandler(int signo) { // *******set LCD to desired off state
-	if (signo == SIGINT)
+	if (signo == SIGINT) {
 		printf(" Caught SIGINT\n");
 		keepRunning = 0;
+	}
 }
 
 // Flips designated "send" GPIO from on to off, which signals the LCD to take in an instruction
