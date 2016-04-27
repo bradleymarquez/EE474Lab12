@@ -193,7 +193,7 @@ int main() {
 }
 
 // Sets the LCD to its off state if Ctrl+C (signal interrupt) is passed by the user
-void sigHandler(int signo) { // *******set LCD to desired off state
+void sigHandler(int signo) {
 	if (signo == SIGINT) {
 		printf(" Caught SIGINT\n");
 		keepRunning = 0;
