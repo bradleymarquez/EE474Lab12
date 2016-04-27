@@ -26,7 +26,7 @@ static volatile int keepRunning = 1;
 int busyFlagCheck(FILE* , FILE *, FILE *, FILE *, FILE *);
 void closeLCD(FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *);
 void initialize(FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *);
-//void setOut(FILE *);
+void write0(FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *, FILE *);
 void sigHandler(int);
 void send(FILE *);
 int main() {
@@ -158,7 +158,8 @@ int main() {
 	
 	signal(SIGINT, sigHandler);
 	initialize(val4, val5, val6, val7, val8, val9, val10, val11, val12, val13, val14, dir14);
-
+	write0(val4, val5, val6, val7, val8, val9, val10, val11, val12, val13, val14, dir14);
+	
 	while(keepRunning) {
 	}
 	
@@ -282,6 +283,61 @@ void closeLCD(FILE *val4, FILE *val5, FILE *val6, FILE *val7, FILE *val8, FILE *
 	fflush(val6);
 }
 
+void write0(FILE *val4, FILE *val5, FILE *val6, FILE *val7, FILE *val8, FILE *val9, FILE *val10, FILE *val11, FILE *val12, FILE *val13, FILE *val14, FILE *dir14) {
+	while (busyFlagCheck(dir14, val14, val4, val5, val6)) {
+		usleep(1);
+	}
+
+	fprintf(val4, "%d", 0); // Set DD RAM Address to 0
+	fflush(val4);
+	fprintf(val5, "%d", 0);
+	fflush(val5);
+	fprintf(val14, "%d", 1);
+	fflush(val14);
+	fprintf(val13, "%d", 0);
+	fflush(val13);
+	fprintf(val12, "%d", 0);
+	fflush(val12);
+	fprintf(val11, "%d", 0);
+	fflush(val11);
+	fprintf(val10, "%d", 0);
+	fflush(val10);
+	fprintf(val9, "%d", 0);
+	fflush(val9);
+	fprintf(val8, "%d", 0);
+	fflush(val8);
+	fprintf(val7, "%d", 0);
+	fflush(val7);
+	send(val6);
+	fflush(val6);
+	
+	while (busyFlagCheck(dir14, val14, val4, val5, val6)) {
+		usleep(1);
+	}
+
+	fprintf(val4, "%d", 1); // Write character to DD Ram
+	fflush(val4);
+	fprintf(val5, "%d", 0);
+	fflush(val5);
+	fprintf(val14, "%d", 0);
+	fflush(val14);
+	fprintf(val13, "%d", 0);
+	fflush(val13);
+	fprintf(val12, "%d", 1);
+	fflush(val12);
+	fprintf(val11, "%d", 1);
+	fflush(val11);
+	fprintf(val10, "%d", 0);
+	fflush(val10);
+	fprintf(val9, "%d", 0);
+	fflush(val9);
+	fprintf(val8, "%d", 0);
+	fflush(val8);
+	fprintf(val7, "%d", 0);
+	fflush(val7);
+	send(val6);
+	fflush(val6);
+}
 void initialize(FILE *val4, FILE *val5, FILE *val6, FILE *val7, FILE *val8, FILE *val9, FILE *val10, FILE *val11, FILE *val12, FILE *val13, FILE *val14, FILE *dir14) {
 
 	fprintf(val6, "%d", 0);
@@ -427,7 +483,7 @@ void initialize(FILE *val4, FILE *val5, FILE *val6, FILE *val7, FILE *val8, FILE
 		usleep(1);
 	}
 
-	fprintf(val4, "%d", 0); // Enry Mode Set
+	fprintf(val4, "%d", 0); // Entry Mode Set
 	fflush(val4);
 	fprintf(val5, "%d", 0);
 	fflush(val5);
