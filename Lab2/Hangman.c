@@ -2,7 +2,7 @@
  * Brad Marquez, Joseph Rothlin, Aigerim Shintemirova
  * 22 / April / 2016
  *
- *	
+ *	BUGS: If USER One enters a word with whitespace, system bugs out
  *  
  */
 
@@ -27,9 +27,9 @@ int main() {
 		while (ask) {
 			printf("\nUSER ONE: Please input your word (Max. %d characters).\n", MAX_STRING_LEN);
 			char temp[10000];
-			fflush(stdin);
-			fflush(stdout);
 			scanf("%16[0-9a-zA-Z]", temp);
+			int ch;
+			while ((ch=getchar()) != EOF && ch != '\n');
 			int i;
 			for(int i = 0; i < strlen(temp); i = i + 1){
 				temp[i] = tolower(temp[i]);
@@ -37,7 +37,7 @@ int main() {
 			if (strlen(temp) > MAX_STRING_LEN) {
 				printf("The word given was too long. Please try again.\n");
 			} else {
-				memmove(word, temp, strlen(temp));
+				memmove(word, temp, strlen(temp) + 1);
 				ask = 0;
 			}
 		}
@@ -46,23 +46,37 @@ int main() {
 			printf("|||||||||||||||||||||||||||||||||||||||||||||||||||");
 			printf("||||||||||||||||||\n");
 		}
-		printf("%s\n", word); // debug ***********
 		// Print strlen(word) "_" characters on LCD first line
 		char current[strlen(word)];
+		memmove(current, word, strlen(word) + 1);
 		for (int i = 0; i < strlen(word); i = i + 1) {
 			current[i] = '_';
 		}
-		char wrongGuesses[12];
+		char wrongGuesses[WRONG_GUESSES * 2];
 		int wrong = 0;
 		int win = 0;
-		while (wrong <= WRONG_GUESSES) {
+		while (wrong < WRONG_GUESSES) {
+			printf("%s\n", current); // Print current to top line of LCD
+			fflush(stdout);
+			printf("%s\n", wrongGuesses); // Print wrongGuesses to bottom line of LCD
 			printf("USER TWO: Please input a character guess.\n");
 			char inputChar;
-			fflush(stdin);
-			fflush(stdout);
-			scanf(" %c\n", &inputChar);
+			scanf("\n%c", &inputChar);
+			int ch;
+			while ((ch=getchar()) != EOF && ch != '\n');
 			inputChar = tolower(inputChar);
 			int j;
+			int guessed = 0;
+			for (int j = 0; j < strlen(wrongGuesses); j = j + 1) {
+				if (wrongGuesses[j] == inputChar) {
+					guessed = 1;
+				}
+			}
+			for (int j = 0; j < strlen(current); j = j + 1){
+				if (current[j] == inputChar) {
+					guessed = 1;
+				}
+			}
 			int found = 0;
 			for (int j = 0; j < strlen(word); j = j + 1) {
 				if (word[j] == inputChar) {
@@ -70,14 +84,16 @@ int main() {
 					found = 1;
 				}
 			}
-			if (!found) {
+			if (!found && !guessed) {
+				printf("\nLetter not found!\n");
+				wrongGuesses[wrong * 2] = inputChar;
+				wrongGuesses[wrong * 2 + 1] = ' ';
 				wrong = wrong + 1;
-				char strcat1[2] = {inputChar, '\0'};
-				char strcat2[2] = {' ', '\0'};
-				strcat(wrongGuesses, strcat1);
-				strcat(wrongGuesses, strcat2);
+			} else if (guessed) {
+				printf("\nYou have already guessed this character.");
+			} else {
+				printf("\nLetter found!\n");
 			}
-			// check if win
 			int foundAll = 1;
 			for (int j = 0; j < strlen(current); j = j + 1) {
 				if (current[j] == '_') {
@@ -90,14 +106,14 @@ int main() {
 			if (win) {
 				wrong = WRONG_GUESSES + 1;
 			}
-			printf("%s", current);
+			printf("\n");
 		}
 		if (win){
-			printf("\n\nYOU WIN!!!");
-			// display win
+			printf("%s\nYOU WIN!!!", current);
+			// display win message on LCD top line
 		} else {
-			printf("\n\nYOU LOSE!!!");
-			//display lose
+			printf("%s\nYOU LOSE!!!", current);
+			//display lose message on LCD top line
 		}
 }
 
