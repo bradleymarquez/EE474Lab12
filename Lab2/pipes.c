@@ -13,10 +13,10 @@ int main() {
 }
 
 void display(char *path) {
-    int fd;
+    FILE* fd;
     char buf[512];
-    fd = open(path, O_RDWR);
-    read(fd, buf, sizeof(buf));
+    fd = fopen(path, O_RDWR);
+    fread(fd, buf, sizeof(buf));
     printf("Test \n", buf);
-    close(fd);
+    fclose(fd);
 }
