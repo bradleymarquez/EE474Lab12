@@ -1,12 +1,12 @@
-/*	hangman.c
+/*	Hangman.c
  * Brad Marquez, Joseph Rothlin, Aigerim Shintemirova
  * 22 / April / 2016
  *
  *	Hangman game implemented on C. Two users interface with the terminal and the current game state is shown on the LCD.
- *  Plays one game of hangman. User One inputs a word and User Two will guess characters until they guess too many wrong
+ * 	Plays one game of hangman. User One inputs a word and User Two will guess characters until they guess too many wrong
  * 	characters or they guess all of the characters right. 
  *	
- *	GLITCHES: Garbage in the string when 5 wrong guesses are made
+ *	
  */
 
 #include <stdio.h>
@@ -140,8 +140,7 @@ int main() {
 		}
 	printf("\n\nPress any key to exit.\n");
 	mygetch(); // waits for any user input
-	clearDisplay();
-	displayOff();
+	closeLCD();
 }
 
 int mygetch(void) {
@@ -229,8 +228,7 @@ void printMan(int i) {
 // Sets the LCD to its off state if Ctrl+C (signal interrupt) is passed by the user
 void sigHandler(int signo) {
 	if (signo == SIGINT) {
-		clearDisplay();
-		displayOff();
+		closeLCD();
 		exit(0);
 	}
 }
