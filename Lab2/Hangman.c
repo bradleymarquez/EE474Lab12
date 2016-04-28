@@ -19,6 +19,8 @@
 #define MAX_STRING_LEN 16
 #define WRONG_GUESSES 6
 int mygetch(void);
+void printMan(int);
+void sigHandler(int);
 int main() {
 	signal(SIGINT, sigHandler);
 	initializeBoot();
@@ -71,8 +73,9 @@ int main() {
 		}
 		while (wrong < WRONG_GUESSES) {
 			printf("Word: %s\n", current); // Print current to top line of LCD
-			
+			writeToLCD(current); // ********************************
 			printf("Wrong Guesses: %s\n", wrongGuesses); // Print wrongGuesses to bottom line of LCD
+			writeToLCD(wrongGuesses); // *****************
 			if(wrong == WRONG_GUESSES - 1) {
 				printf("\nWARNING: One more wrong guess will result in a loss.\n\n");
 			}
@@ -124,14 +127,21 @@ int main() {
 				wrong = WRONG_GUESSES + 1;
 			}
 			printf("\n");
+			printMan(wrong);
 		}
 		if (win){
 			printf("%s\n\nYOU WIN!!!\n\n", current);
 			// display win message on LCD top line
+			writeToLCD("YOU WIN"); // ********************************
 		} else {
 			printf("%s\n\nYOU LOSE!!!\n\n", current);
 			//display lose message on LCD top line
+			writeToLCD("YOU LOSE"); // ********************************
 		}
+	printf("\n\nPress any key to exit.\n");
+	mygetch(); // waits for any user input
+	clearDisplay();
+	displayOff();
 }
 
 int mygetch(void) {
@@ -146,5 +156,82 @@ int mygetch(void) {
   tcsetattr ( STDIN_FILENO, TCSANOW, &oldt );
 
   return ch;
+}
+
+void printMan(int i) {
+	 switch (i) {
+	      case 0 :
+	      printf("  _______\n");
+	      printf("  |/\n");
+	      printf("  |\n");
+	      printf("  |\n");
+	      printf("  |\n");
+	      printf("  |\n");
+	      printf("__|_________\n\n");
+	     break;
+	     case 1:
+	      printf("  _______\n");
+	      printf("  |/   | \n");
+	      printf("  |    O \n");
+	      printf("  |\n");
+	      printf("  |\n");
+	      printf("  |\n");
+	      printf("__|_________\n\n");
+	     break;
+	     case 2:
+	      printf("  _______\n");
+	      printf("  |/   | \n");
+	      printf("  |    O \n");
+	      printf("  |    |\n");
+	      printf("  |    |\n");
+	      printf("  |\n");
+	      printf("__|_________\n\n");
+	     break;
+	     case 3:
+	      printf("  _______\n");
+	      printf("  |/   | \n");
+	      printf("  |    O \n");
+	      printf("  |   \\|\n");
+	      printf("  |    | \n");
+	      printf("  |\n");
+	      printf("__|_________\n\n");
+	     break;
+	     case 4:
+	      printf("  _______\n");
+	      printf("  |/   | \n");
+	      printf("  |    O \n");
+	      printf("  |   \\|/\n");
+	      printf("  |    | \n");
+	      printf("  |\n");
+	      printf("__|_________\n\n");
+	     break;
+	     case 5:
+	      printf("  _______\n");
+	      printf("  |/   | \n");
+	      printf("  |    O \n");
+	      printf("  |   \\|/\n");
+	      printf("  |    | \n");
+	      printf("  |   /\n");
+	      printf("__|_________\n\n");
+	     break;
+	     case 6:
+	      printf("  _______\n");
+	      printf("  |/   | \n");
+	      printf("  |    X \n");
+	      printf("  |   \\|/\n");
+	      printf("  |    | \n");
+	      printf("  |   / \\\n");
+	      printf("__|_________\n\n");
+	     break;
+	 }
+}
+
+// Sets the LCD to its off state if Ctrl+C (signal interrupt) is passed by the user
+void sigHandler(int signo) {
+	if (signo == SIGINT) {
+		clearDisplay();
+		displayOff();
+		exit(0);
+	}
 }
 	
