@@ -14,11 +14,14 @@
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
+#include "ledinit.c"
 
 #define MAX_STRING_LEN 16
 #define WRONG_GUESSES 6
 int mygetch(void);
 int main() {
+	signal(SIGINT, sigHandler);
+	initializeBoot();
 	printf("\nHello! Welcome to Hangman!\n\nINSTRUCTIONS: Playing this game requires two users. First, User One will be prompted to");
 	printf(" enter\na word from 1-%d characters. The word inputted may only include characters [a-z, A-Z] and\nnumbers [0-9]. The word", MAX_STRING_LEN);
 	printf(" will terminate on whitespace, and the word used will be the string\nbefore any whitespace input. ");
@@ -54,17 +57,21 @@ int main() {
 		// Print strlen(word) "_" characters on LCD first line
 		char current[strlen(word)];
 		memmove(current, word, strlen(word) + 1);
-		for (i = 0; i < strlen(word); i = i + 1) {
+		for (i = 0; i < strlen(word); i = i + 1) { // initializes word display line with padded spaces to 16 characters long
 			current[i] = '_';
+		}
+		for (i = strlen(word); i < MAX_STRING_LEN; i = i + 1) {
+			current[i] = ' ';
 		}
 		char wrongGuesses[WRONG_GUESSES * 2];
 		int wrong = 0;
 		int win = 0;
-		for (i = 0; i < strlen(wrongGuesses); i = i + 1) { // Initializes wrongGuesses to be blank
+		for (i = 0; i < MAX_STRING_LEN; i = i + 1) { // Initializes wrongGuesses to be blank and 16 characters long
 			wrongGuesses[i] = ' ';
 		}
 		while (wrong < WRONG_GUESSES) {
 			printf("Word: %s\n", current); // Print current to top line of LCD
+			
 			printf("Wrong Guesses: %s\n", wrongGuesses); // Print wrongGuesses to bottom line of LCD
 			if(wrong == WRONG_GUESSES - 1) {
 				printf("\nWARNING: One more wrong guess will result in a loss.\n\n");
