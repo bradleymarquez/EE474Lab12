@@ -9,11 +9,16 @@
 #include <stdio.h>  // for File IO and printf
 #include <unistd.h> // for usleep
 #include <signal.h> // for user termination of the program
-#include <fcntl.h> // for file access modes
-#include <string.h> // for strings in fifo
-#include <sys/stat.h> // for mkfifo
-#include <sys/types.h> // for mkfifo
 
+#include <sys/stat.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
+
+// Total number of pins used with LCD
+#define TOTALPINS 11
+
+// Pin location in direction/value array
 #define RS 0
 #define RW 1
 #define E 2
@@ -37,204 +42,143 @@
 #define LCD_12 68 // DB5 Pin - GPIO_PIN_68
 #define LCD_13 44 // DB6 Pin - GPIO_PIN_44
 #define LCD_14 26 // DB7 Pin - GPIO_PIN_26
-#define TEST 112
+#define TEST 112 // Used for testing only
 
+// Used to determine when Ctrl-C has been intiated
 static volatile int keepRunning = 1;
 
-void setBus(unsigned char byte, FILE* lcdPins[]);
+void initialize(FILE *lcdPins[]);
 void setAddress(unsigned char address, FILE* lcdPins[]);
 void writeChar(unsigned char character, FILE* lcdPins[]);
-void closeLCD(FILE *lcdPins[], FILE *);
-void initialize(FILE *lcdPins[], FILE *);
-void sigHandler(int);
+void clearDisplay(FILE* value[]);
+void displayOff(FILE* value[]);
+void setBus(unsigned char byte, FILE* lcdPins[]);
 void send(FILE *);
-void printFIFO(unsigned char pipeName[]);
-void writeString(unsigned char characters[], FILE* lcdPins[]);
+void closeLCD(FILE *lcdPins[]);
+void sigHandler(int);
+//void display(char*);
+
 int main() {
 
 	// Creates pointers to interface with the files of the Beaglebone
-	FILE *sys, *dir4, *dir5, *dir6, *dir7, *dir8, *dir9, *dir10, *dir11, *dir12,
-	*dir13, *dir14, *dirTest, *val4, *val5, *val6, *val7, *val8, *val9, *val10, *val11, *val12, *val13, *val14, *test;
+	FILE* direction[TOTALPINS];
+	FILE* value[TOTALPINS];
+	int gpioPins[TOTALPINS] = {LCD_4, LCD_5, LCD_6, LCD_7, LCD_8, LCD_9, LCD_10, LCD_11, LCD_12, LCD_13, LCD_14};
+	FILE *sys, *dirTest, *test;
 
-	// Selects the files for writing in GPIO digital pins and the Pulse Width Modulation output
+	// Opens sys file for creating GPIO directories
 	sys = fopen("/sys/class/gpio/export", "w");
 	fseek(sys, 0, SEEK_SET); 
 
-	// Writes the value corresponding to the GPIO digital pins used
-	fprintf(sys, "%d", LCD_4);
-	fflush(sys);
-	fprintf(sys, "%d", LCD_5);
-	fflush(sys);
-	fprintf(sys, "%d", LCD_6);
-	fflush(sys);
-	fprintf(sys, "%d", LCD_7);
-	fflush(sys);
-	fprintf(sys, "%d", LCD_8);
-	fflush(sys);
-	fprintf(sys, "%d", LCD_9);
-	fflush(sys);
-	fprintf(sys, "%d", LCD_10);
-	fflush(sys);
-	fprintf(sys, "%d", LCD_11);
-	fflush(sys);
-	fprintf(sys, "%d", LCD_12);
-	fflush(sys);
-	fprintf(sys, "%d", LCD_13);
-	fflush(sys);
-	fprintf(sys, "%d", LCD_14);
-	fflush(sys);
+	// Creates directories for all the GPIO pins used
+	int i;
+	for (i = 0; i < TOTALPINS; i++) {
+		fprintf(sys, "%d", gpioPins[i]);
+		fflush(sys);
+	}
 	fprintf(sys, "%d", TEST);
 	fflush(sys);
 
 	// Sets the direction of each GPIO to output
-	dir4 = fopen("/sys/class/gpio/gpio48/direction", "w");
-	fseek(dir4, 0, SEEK_SET);
-	fprintf(dir4, "%s", "out");
-	fflush(dir4);
-	
-	dir5 = fopen("/sys/class/gpio/gpio49/direction", "w");
-	fseek(dir5, 0, SEEK_SET);
-	fprintf(dir5, "%s", "out");
-	fflush(dir5);
+	direction[RS] = fopen("/sys/class/gpio/gpio48/direction", "w");
+	direction[RW] = fopen("/sys/class/gpio/gpio49/direction", "w");
+	direction[E] = fopen("/sys/class/gpio/gpio60/direction", "w");
+	direction[DB0] = fopen("/sys/class/gpio/gpio66/direction", "w");
+	direction[DB1] = fopen("/sys/class/gpio/gpio69/direction", "w");
+	direction[DB2] = fopen("/sys/class/gpio/gpio45/direction", "w");	
+	direction[DB3] = fopen("/sys/class/gpio/gpio47/direction", "w");
+	direction[DB4] = fopen("/sys/class/gpio/gpio67/direction", "w");
+	direction[DB5] = fopen("/sys/class/gpio/gpio68/direction", "w");
+	direction[DB6]= fopen("/sys/class/gpio/gpio44/direction", "w");
+	direction[DB7] = fopen("/sys/class/gpio/gpio26/direction", "w");
+	for (i = 0; i < TOTALPINS; i++) {
+		fseek(direction[i], 0, SEEK_SET);
+		fprintf(direction[i], "%s", "out");
+		fflush(direction[i]);
+	}
 
-	dir6 = fopen("/sys/class/gpio/gpio60/direction", "w");
-	fseek(dir6, 0, SEEK_SET);
-	fprintf(dir6, "%s", "out");
-	fflush(dir6);
-	
-	dir7 = fopen("/sys/class/gpio/gpio66/direction", "w");
-	fseek(dir7, 0, SEEK_SET);
-	fprintf(dir7, "%s", "out");
-	fflush(dir7);
-	
-	dir8 = fopen("/sys/class/gpio/gpio69/direction", "w");
-	fseek(dir8, 0, SEEK_SET);
-	fprintf(dir8, "%s", "out");
-	fflush(dir8);
-
-	dir9 = fopen("/sys/class/gpio/gpio45/direction", "w");
-	fseek(dir9, 0, SEEK_SET);
-	fprintf(dir9, "%s", "out");
-	fflush(dir9);
-	
-	dir10 = fopen("/sys/class/gpio/gpio47/direction", "w");
-	fseek(dir10, 0, SEEK_SET);
-	fprintf(dir10, "%s", "out");
-	fflush(dir10);
-	
-	dir11 = fopen("/sys/class/gpio/gpio67/direction", "w");
-	fseek(dir11, 0, SEEK_SET);
-	fprintf(dir11, "%s", "out");
-	fflush(dir11);
-
-	dir12 = fopen("/sys/class/gpio/gpio68/direction", "w");
-	fseek(dir12, 0, SEEK_SET);
-	fprintf(dir12, "%s", "out");
-	fflush(dir12);
-	
-	dir13= fopen("/sys/class/gpio/gpio44/direction", "w");
-	fseek(dir13, 0, SEEK_SET);
-	fprintf(dir13, "%s", "out");
-	fflush(dir13);
-	
-	dir14 = fopen("/sys/class/gpio/gpio26/direction", "w");
-	fseek(dir14, 0, SEEK_SET);
-	fprintf(dir14, "%s", "out");
-	fflush(dir14);
-
+	// Sets direction of GPIO pin used for testing
 	dirTest = fopen("/sys/class/gpio/gpio112/direction", "w");
 	fseek(dirTest, 0, SEEK_SET);
 	fprintf(dirTest, "%s", "out");
 	fflush(dirTest);
 
-	// Opens the file that controls if the pin is high or low
-	val4 = fopen("/sys/class/gpio/gpio48/value", "w");
-	fseek(val4, 0, SEEK_SET);
-
-	val5 = fopen("/sys/class/gpio/gpio49/value", "w");
-	fseek(val5, 0, SEEK_SET);
-	
-	val6 = fopen("/sys/class/gpio/gpio60/value", "w");
-	fseek(val6, 0, SEEK_SET);
-
-	val7 = fopen("/sys/class/gpio/gpio66/value", "w");
-	fseek(val7, 0, SEEK_SET);
-	
-	val8 = fopen("/sys/class/gpio/gpio69/value", "w");
-	fseek(val8, 0, SEEK_SET);
-
-	val9 = fopen("/sys/class/gpio/gpio45/value", "w");
-	fseek(val9, 0, SEEK_SET);
-	
-	val10 = fopen("/sys/class/gpio/gpio47/value", "w");
-	fseek(val10, 0, SEEK_SET);
-
-	val11 = fopen("/sys/class/gpio/gpio67/value", "w");
-	fseek(val11, 0, SEEK_SET);
-	
-	val12 = fopen("/sys/class/gpio/gpio68/value", "w");
-	fseek(val12, 0, SEEK_SET);
-
-	val13 = fopen("/sys/class/gpio/gpio44/value", "w");
-	fseek(val13, 0, SEEK_SET);
-	
-	val14 = fopen("/sys/class/gpio/gpio26/value", "w");
-	fseek(val14, 0, SEEK_SET);
-
+	// Opens the file that controls the pin value
+	value[RS] = fopen("/sys/class/gpio/gpio48/value", "w");
+	value[RW] = fopen("/sys/class/gpio/gpio49/value", "w");	
+	value[E] = fopen("/sys/class/gpio/gpio60/value", "w");
+	value[DB0] = fopen("/sys/class/gpio/gpio66/value", "w");	
+	value[DB1] = fopen("/sys/class/gpio/gpio69/value", "w");
+	value[DB2] = fopen("/sys/class/gpio/gpio45/value", "w");	
+	value[DB3] = fopen("/sys/class/gpio/gpio47/value", "w");
+	value[DB4] = fopen("/sys/class/gpio/gpio67/value", "w");	
+	value[DB5] = fopen("/sys/class/gpio/gpio68/value", "w");
+	value[DB6] = fopen("/sys/class/gpio/gpio44/value", "w");	
+	value[DB7] = fopen("/sys/class/gpio/gpio26/value", "w");
 	test = fopen("/sys/class/gpio/gpio112/value", "w");
-	fseek(test, 0, SEEK_SET);
 	
+	// Set test pin to zero
 	fprintf(test, "%d", 0);
 	fflush(test);
 
-	FILE* lcdPins[11] = {val4, val5, val6, val7, val8, val9, val10, val11, val12, val13, val14};	
-
+	// Initialize interupt function for Ctrl-C
 	signal(SIGINT, sigHandler);
-	initialize(lcdPins, dir14);
 
-	usleep(1000);
+	initialize(value);
 
-	// Write 0
-	setAddress((unsigned char) 0x00, lcdPins);
+	// mkfifo test
+	int fd;
+	char msg[90];
+	char path1[] = "~/fifo1";
+	struct stat st;
+	if (stat(path1, &st) != 0) {
+       		mkfifo(path1, 0666);
+	}
 
-	usleep(1000);
-	writeChar((unsigned char) 0x30, lcdPins);
+	mkfifo(path1, 0666);
+	fd = open(path1, O_RDWR);
+	printf("Welcome \n", msg);
+	write(fd, msg, strlen(msg));
+	unlink(path1);
+	//display(path);
+	//end mkfifo test
+
+	/**setAddress((unsigned char) 0x00, value);
+
+	writeChar((unsigned char) 'H', value);
+	writeChar((unsigned char) 'e', value);
+	writeChar((unsigned char) 'l', value);
+	writeChar((unsigned char) 'l', value);
+	writeChar((unsigned char) 'o', value);*/
 	
+	// Set test pin to 1 in order to confirm location arrived in code
 	fprintf(test, "%d", 1);
 	fflush(test);	
 	
 	while(keepRunning) {
 	}
 	
-	closeLCD(lcdPins, dir14);
-    // Closes all accessed files
+	closeLCD(value);
+
+	// Closes all accessed files
 	fclose(sys);
-	fclose(dir4);
-	fclose(dir5);
-	fclose(dir6);
-	fclose(dir7);
-	fclose(dir8);
-	fclose(dir9);
-	fclose(dir10);
-	fclose(dir11);
-	fclose(dir12);
-	fclose(dir13);
-	fclose(dir14);
-	fclose(val4);
-	fclose(val5);
-	fclose(val6);
-	fclose(val7);
-	fclose(val8);
-	fclose(val9);
-	fclose(val10);
-	fclose(val11);
-	fclose(val12);
-	fclose(val13);
-	fclose(val14);
-	
+	for (i = 0; i < TOTALPINS; i++) {
+		fclose(direction[i]);
+		fclose(value[i]);
+	}
+			
 	// returns 0 if program runs all the way through
-	return 0; 
+	return 0;
 }
+/** test for mkfifo
+void display(char *path) {
+	FILE* fd;
+	char buf[512];
+	fd = fopen(path, O_RDWR);
+	fread(fd, buf, sizeof(buf));
+	fprintf("test \n", buf);
+	fclose(fd);
+}*/
 
 // Sets the LCD to its off state if Ctrl+C (signal interrupt) is passed by the user
 void sigHandler(int signo) {
@@ -244,81 +188,61 @@ void sigHandler(int signo) {
 	}
 }
 
-
-void closeLCD(FILE *lcdPins[], FILE *dir14) {
-	usleep(500);
-	
-	fprintf(lcdPins[RS], "%d", 0); // Function Set #1
-	fflush(lcdPins[RS]);
-	fprintf(lcdPins[RW], "%d", 0);
-	fflush(lcdPins[RW]);
-	usleep(500);
-	setBus((unsigned char) 0x08, lcdPins); // Display OFF
-	send(lcdPins[E]);
-	fflush(lcdPins[E]);
-
-	usleep(500);
-
-	setBus((unsigned char) 0x01, lcdPins); // Clear Display
-	send(lcdPins[E]);
-	fflush(lcdPins[E]);
+// Used to put the LCD screen into a shut down state
+void closeLCD(FILE *value[]) {
+	displayOff(value);
+	clearDisplay(value);
 }
 
-void initialize(FILE* lcdPins[], FILE *dir14) {
+void initialize(FILE* value[]) {
 	usleep(15001);
 	
-	fprintf(lcdPins[RS], "%d", 0); // Function Set #1
-	fflush(lcdPins[RS]);
-	fprintf(lcdPins[RW], "%d", 0);
-	fflush(lcdPins[RW]);
-	setBus((unsigned char) 0x30, lcdPins);
-	send(lcdPins[E]);
-	fflush(lcdPins[E]);
+	fprintf(value[RS], "%d", 0); // Function Set #1
+	fflush(value[RS]);
+	fprintf(value[RW], "%d", 0);
+	fflush(value[RW]);
+	setBus((unsigned char) 0x30, value);
+	send(value[E]);
+	fflush(value[E]);
 
 	usleep(4101);
 	
-	send(lcdPins[E]); // Function Set #4
-	fflush(lcdPins[E]);
+	send(value[E]); // Function Set #2
+	fflush(value[E]);
 	
 	usleep(101);
 	
-	send(lcdPins[E]); // Function Set #3
-	fflush(lcdPins[E]);
+	send(value[E]); // Function Set #3
+	fflush(value[E]);
 	
 	usleep(500);
 
-	setBus((unsigned char) 0x38, lcdPins); // Function Set #4
-	send(lcdPins[E]);
-	fflush(lcdPins[E]);
+	setBus((unsigned char) 0x38, value); // Function Set #4
+	send(value[E]);
+	fflush(value[E]);
 	
 	usleep(500);
 
-	setBus((unsigned char) 0x08, lcdPins); // Display OFF
-	send(lcdPins[E]);
-	fflush(lcdPins[E]);
+	displayOff(value);
 
-	usleep(500);
+	clearDisplay(value);
 
-	setBus((unsigned char) 0x01, lcdPins); // Clear Display
-	send(lcdPins[E]);
-	fflush(lcdPins[E]);
+	setBus((unsigned char) 0x0c, value); // Entry Mode Set
+	send(value[E]);
+	fflush(value[E]);
 	
 	usleep(500);
 
-	setBus((unsigned char) 0x0c, lcdPins); // Entry Mode Set
-	send(lcdPins[E]);
-	fflush(lcdPins[E]);
-	
-	usleep(500);
-
-	setBus((unsigned char) 0x0f, lcdPins);
-	send(lcdPins[E]);
-	fflush(lcdPins[E]);
+	setBus((unsigned char) 0x0f, value); // Display on w/ cursor & blink on
+	send(value[E]);
+	fflush(value[E]);
 
 	usleep(500);
 }
 
-// Flips designated "send" GPIO from on to off, which signals the LCD to take in an instruction
+
+
+// Flips enable pin which cause LCD to read current signal on the bus
 void send(FILE *val6) {
 	fprintf(val6, "%d", 1);
 	fflush(val6);
@@ -328,89 +252,79 @@ void send(FILE *val6) {
 	usleep(10);
 }
 
-void printFIFO(unsigned char pipeName[]){
-	char out[20]= "FIFO's are fun!", in[20];
-	int rfd;
-	int wfd;
-
-	if (mkfifo(pipeName, S_IRWXU) != 0) {
-		perror("mkfifo() error");
-	} else {
-		if ((rfd = open(pipeName, O_RDONLY|O_NONBLOCK)) < 0)
-		  perror("open() error for read end");
-		else {
-		  if ((wfd = open(pipeName, O_WRONLY)) < 0)
-			perror("open() error for write end");
-		  else {
-			if (write(wfd, out, strlen(out)+1) == -1)
-			  perror("write() error");
-			else if (read(rfd, in, sizeof(in)) == -1)
-			  perror("read() error");
-			else printf("read '%s' from the FIFO\n", in);
-			close(wfd);
-		  }
-		  close(rfd);
-		}
-		unlink(pipeName);
-	  }
-}
-
-void writeString(unsigned char characters[], FILE* lcdPins[]){
-	if ((unsigned) strlen(characters) < 0x21) {
-		int i;
-		for (int i = 0; i < (unsigned) strlen(characters); i = i + 1) {
-			writeChar(characters[i], lcdPins);
-		}
-	} else {
-		writeString("ERROR - TOO MANY CHARACTERS", lcdPins);
-	}
-}
-void writeChar(unsigned char character, FILE* lcdPins[]) {
-	fprintf(lcdPins[RS], "%d", 1);
-	fflush(lcdPins[RS]);
-	fprintf(lcdPins[RW], "%d", 0);
-	fflush(lcdPins[RW]);
-	setBus(character, lcdPins);
-	send(lcdPins[E]);
-	fflush(lcdPins[E]);
+// Turns the LCD off
+void displayOff(FILE* value[]) {
+	fprintf(value[RS], "%d", 0);
+	fflush(value[RS]);
+	fprintf(value[RW], "%d", 0);
+	fflush(value[RW]);
+	setBus((unsigned char) 0x08, value); // Display OFF
+	send(value[E]);
+	fflush(value[E]);
 	usleep(50);
 }
 
-void setAddress(unsigned char address, FILE* lcdPins[]) {
-	fprintf(lcdPins[RS], "%d", 0); // Set DD RAM Address to 0
-	fflush(lcdPins[RS]);
-	fprintf(lcdPins[RW], "%d", 0);
-	fflush(lcdPins[RW]);
+// Clears the LCD
+void clearDisplay(FILE* value[]) {
+	fprintf(value[RS], "%d", 0);
+	fflush(value[RS]);
+	fprintf(value[RW], "%d", 0);
+	fflush(value[RW]);
+	setBus((unsigned char) 0x01, value); // Clear Display
+	send(value[E]);
+	fflush(value[E]);
+	usleep(50);
+}
+
+// Writes the "character" to the LCD screen ("character" expects the correct
+// value based on the char table in the LCD spec)
+void writeChar(unsigned char character, FILE* value[]) {
+	fprintf(value[RS], "%d", 1);
+	fflush(value[RS]);
+	fprintf(value[RW], "%d", 0);
+	fflush(value[RW]);
+	setBus(character, value);
+	send(value[E]);
+	fflush(value[E]);
+	usleep(50);
+}
+
+// Sets the R/W pointer to the address specified
+void setAddress(unsigned char address, FILE* value[]) {
+	fprintf(value[RS], "%d", 0); // Set DD RAM Address to 0
+	fflush(value[RS]);
+	fprintf(value[RW], "%d", 0);
+	fflush(value[RW]);
 	address |= 0x80;
-	setBus(address, lcdPins);
-	send(lcdPins[E]);
-	fflush(lcdPins[E]);
+	setBus(address, value);
+	send(value[E]);
+	fflush(value[E]);
 	usleep(50);
 }
 
-void setBus(unsigned char byte, FILE* lcdPins[]) {
-	fprintf(lcdPins[DB0], "%d", (byte % 2));
-	fflush(lcdPins[DB0]);
+// Sets DB7 to DB0 to the given 8 bits
+void setBus(unsigned char byte, FILE* value[]) {
+	fprintf(value[DB0], "%d", (byte % 2));
+	fflush(value[DB0]);
 	byte  = byte >> 1;
-	fprintf(lcdPins[DB1], "%d", (byte % 2));
-	fflush(lcdPins[DB1]);
+	fprintf(value[DB1], "%d", (byte % 2));
+	fflush(value[DB1]);
 	byte  = byte >> 1;
-	fprintf(lcdPins[DB2], "%d", (byte % 2));
-	fflush(lcdPins[DB2]);
+	fprintf(value[DB2], "%d", (byte % 2));
+	fflush(value[DB2]);
 	byte  = byte >> 1;
-	fprintf(lcdPins[DB3], "%d", (byte % 2));
-	fflush(lcdPins[DB3]);
+	fprintf(value[DB3], "%d", (byte % 2));
+	fflush(value[DB3]);
 	byte  = byte >> 1;
-	fprintf(lcdPins[DB4], "%d", (byte % 2));
-	fflush(lcdPins[DB4]);
+	fprintf(value[DB4], "%d", (byte % 2));
+	fflush(value[DB4]);
 	byte  = byte >> 1;
-	fprintf(lcdPins[DB5], "%d", (byte % 2));
-	fflush(lcdPins[DB5]);
+	fprintf(value[DB5], "%d", (byte % 2));
+	fflush(value[DB5]);
 	byte  = byte >> 1;
-	fprintf(lcdPins[DB6], "%d", (byte % 2));
-	fflush(lcdPins[DB6]);
+	fprintf(value[DB6], "%d", (byte % 2));
+	fflush(value[DB6]);
 	byte  = byte >> 1;
-	fprintf(lcdPins[DB7], "%d", (byte % 2));
-	fflush(lcdPins[DB7]);
+	fprintf(value[DB7], "%d", (byte % 2));
+	fflush(value[DB7]);
 }
-
