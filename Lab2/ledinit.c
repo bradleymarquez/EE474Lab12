@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+#include <errno.h>
+#include <sys/types.h>
 
 // Total number of pins used with LCD
 #define TOTALPINS 11
@@ -46,23 +48,28 @@
 
 // Used to determine when Ctrl-C has been intiated
 static volatile int keepRunning = 1;
+static FILE* value[TOTALPINS];
 
-void initialize(FILE *lcdPins[]);
-void setAddress(unsigned char address, FILE* lcdPins[]);
-void writeChar(unsigned char character, FILE* lcdPins[]);
-void clearDisplay(FILE* value[]);
-void displayOff(FILE* value[]);
-void setBus(unsigned char byte, FILE* lcdPins[]);
-void send(FILE *);
-void closeLCD(FILE *lcdPins[]);
+void initialize();
+void setAddress(unsigned char address);
+void writeChar(unsigned char character);
+void clearDisplay();
+void displayOff();
+void setBus(unsigned char byte);
+void send();
+void closeLCD();
 void sigHandler(int);
+void lcdBoot();
 //void display(char*);
 
-int main() {
+int main() {		
+	// returns 0 if program runs all the way through
+	return 0;
+}
 
+void lcdBoot(){
 	// Creates pointers to interface with the files of the Beaglebone
 	FILE* direction[TOTALPINS];
-	FILE* value[TOTALPINS];
 	int gpioPins[TOTALPINS] = {LCD_4, LCD_5, LCD_6, LCD_7, LCD_8, LCD_9, LCD_10, LCD_11, LCD_12, LCD_13, LCD_14};
 	FILE *sys, *dirTest, *test;
 
@@ -123,33 +130,9 @@ int main() {
 
 	// Initialize interupt function for Ctrl-C
 	signal(SIGINT, sigHandler);
-
-	initialize(value);
-
-	// mkfifo test
-	int fd;
-	char msg[90];
-	char path1[] = "~/fifo1";
-	struct stat st;
-	if (stat(path1, &st) != 0) {
-       		mkfifo(path1, 0666);
-	}
-
-	mkfifo(path1, 0666);
-	fd = open(path1, O_RDWR);
-	printf("Welcome \n", msg);
-	write(fd, msg, strlen(msg));
-	unlink(path1);
-	//display(path);
-	//end mkfifo test
-
-	/**setAddress((unsigned char) 0x00, value);
-
-	writeChar((unsigned char) 'H', value);
-	writeChar((unsigned char) 'e', value);
-	writeChar((unsigned char) 'l', value);
-	writeChar((unsigned char) 'l', value);
-	writeChar((unsigned char) 'o', value);*/
+	
+	// Initializes LCD
+	initialize();
 	
 	// Set test pin to 1 in order to confirm location arrived in code
 	fprintf(test, "%d", 1);
@@ -158,7 +141,7 @@ int main() {
 	while(keepRunning) {
 	}
 	
-	closeLCD(value);
+	closeLCD();
 
 	// Closes all accessed files
 	fclose(sys);
@@ -166,19 +149,7 @@ int main() {
 		fclose(direction[i]);
 		fclose(value[i]);
 	}
-			
-	// returns 0 if program runs all the way through
-	return 0;
 }
-/** test for mkfifo
-void display(char *path) {
-	FILE* fd;
-	char buf[512];
-	fd = fopen(path, O_RDWR);
-	fread(fd, buf, sizeof(buf));
-	fprintf("test \n", buf);
-	fclose(fd);
-}*/
 
 // Sets the LCD to its off state if Ctrl+C (signal interrupt) is passed by the user
 void sigHandler(int signo) {
@@ -189,52 +160,52 @@ void sigHandler(int signo) {
 }
 
 // Used to put the LCD screen into a shut down state
-void closeLCD(FILE *value[]) {
-	displayOff(value);
-	clearDisplay(value);
+void closeLCD() {
+	displayOff();
+	clearDisplay();
 }
 
-void initialize(FILE* value[]) {
+void initialize() {
 	usleep(15001);
 	
 	fprintf(value[RS], "%d", 0); // Function Set #1
 	fflush(value[RS]);
 	fprintf(value[RW], "%d", 0);
 	fflush(value[RW]);
-	setBus((unsigned char) 0x30, value);
-	send(value[E]);
+	setBus((unsigned char) 0x30);
+	send();
 	fflush(value[E]);
 
 	usleep(4101);
 	
-	send(value[E]); // Function Set #2
+	send(); // Function Set #2
 	fflush(value[E]);
 	
 	usleep(101);
 	
-	send(value[E]); // Function Set #3
+	send(); // Function Set #3
 	fflush(value[E]);
 	
 	usleep(500);
 
-	setBus((unsigned char) 0x38, value); // Function Set #4
-	send(value[E]);
+	setBus((unsigned char) 0x38); // Function Set #4
+	send();
 	fflush(value[E]);
 	
 	usleep(500);
 
-	displayOff(value);
+	displayOff();
 
-	clearDisplay(value);
+	clearDisplay();
 
-	setBus((unsigned char) 0x0c, value); // Entry Mode Set
-	send(value[E]);
+	setBus((unsigned char) 0x0c); // Entry Mode Set
+	send();
 	fflush(value[E]);
 	
 	usleep(500);
 
-	setBus((unsigned char) 0x0f, value); // Display on w/ cursor & blink on
-	send(value[E]);
+	setBus((unsigned char) 0x0f); // Display on w/ cursor & blink on
+	send();
 	fflush(value[E]);
 
 	usleep(500);
@@ -243,67 +214,67 @@ void initialize(FILE* value[]) {
 
 
 // Flips enable pin which cause LCD to read current signal on the bus
-void send(FILE *val6) {
-	fprintf(val6, "%d", 1);
-	fflush(val6);
+void send() {
+	fprintf(value[E], "%d", 1);
+	fflush(value[E]);
 	usleep(10);
-	fprintf(val6, "%d", 0);
-	fflush(val6);
+	fprintf(value[E], "%d", 0);
+	fflush(value[E]);
 	usleep(10);
 }
 
 // Turns the LCD off
-void displayOff(FILE* value[]) {
+void displayOff() {
 	fprintf(value[RS], "%d", 0);
 	fflush(value[RS]);
 	fprintf(value[RW], "%d", 0);
 	fflush(value[RW]);
-	setBus((unsigned char) 0x08, value); // Display OFF
-	send(value[E]);
+	setBus((unsigned char) 0x08); // Display OFF
+	send();
 	fflush(value[E]);
 	usleep(50);
 }
 
 // Clears the LCD
-void clearDisplay(FILE* value[]) {
+void clearDisplay() {
 	fprintf(value[RS], "%d", 0);
 	fflush(value[RS]);
 	fprintf(value[RW], "%d", 0);
 	fflush(value[RW]);
-	setBus((unsigned char) 0x01, value); // Clear Display
-	send(value[E]);
+	setBus((unsigned char) 0x01); // Clear Display
+	send();
 	fflush(value[E]);
 	usleep(50);
 }
 
 // Writes the "character" to the LCD screen ("character" expects the correct
 // value based on the char table in the LCD spec)
-void writeChar(unsigned char character, FILE* value[]) {
+void writeChar(unsigned char character) {
 	fprintf(value[RS], "%d", 1);
 	fflush(value[RS]);
 	fprintf(value[RW], "%d", 0);
 	fflush(value[RW]);
-	setBus(character, value);
-	send(value[E]);
+	setBus(character);
+	send();
 	fflush(value[E]);
 	usleep(50);
 }
 
 // Sets the R/W pointer to the address specified
-void setAddress(unsigned char address, FILE* value[]) {
+void setAddress(unsigned char address) {
 	fprintf(value[RS], "%d", 0); // Set DD RAM Address to 0
 	fflush(value[RS]);
 	fprintf(value[RW], "%d", 0);
 	fflush(value[RW]);
 	address |= 0x80;
-	setBus(address, value);
-	send(value[E]);
+	setBus(address);
+	send();
 	fflush(value[E]);
 	usleep(50);
 }
 
 // Sets DB7 to DB0 to the given 8 bits
-void setBus(unsigned char byte, FILE* value[]) {
+void setBus(unsigned char byte) {
 	fprintf(value[DB0], "%d", (byte % 2));
 	fflush(value[DB0]);
 	byte  = byte >> 1;
