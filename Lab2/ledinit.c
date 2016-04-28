@@ -6,68 +6,17 @@
  *  
  */
 
-#include <stdio.h>  // for File IO and printf
-#include <unistd.h> // for usleep
-#include <signal.h> // for user termination of the program
+#include "ledinit.h"
 
-#include <sys/stat.h>
-#include <stdlib.h>
-#include <string.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <sys/types.h>
-
-// Total number of pins used with LCD
-#define TOTALPINS 11
-
-// Pin location in direction/value array
-#define RS 0
-#define RW 1
-#define E 2
-#define DB0 3
-#define DB1 4
-#define DB2 5
-#define DB3 6
-#define DB4 7
-#define DB5 8
-#define DB6 9
-#define DB7 10
-
-#define LCD_4 48 // RS Pin - GPIO_PIN_48
-#define LCD_5 49 // RW Pin - GPIO_PIN_49
-#define LCD_6 60 // E Pin - GPIO_PIN_60
-#define LCD_7 66 // DB0 Pin - GPIO_PIN_66
-#define LCD_8 69 // DB1 Pin - GPIO_PIN_69
-#define LCD_9 45 // DB2 Pin - GPIO_PIN_45
-#define LCD_10 47 // DB3 Pin - GPIO_PIN_47
-#define LCD_11 67 // DB4 Pin - GPIO_PIN_67
-#define LCD_12 68 // DB5 Pin - GPIO_PIN_68
-#define LCD_13 44 // DB6 Pin - GPIO_PIN_44
-#define LCD_14 26 // DB7 Pin - GPIO_PIN_26
-#define TEST 112 // Used for testing only
-
-// Used to determine when Ctrl-C has been intiated
-static volatile int keepRunning = 1;
 static FILE* value[TOTALPINS];
 
-void initialize();
-void setAddress(unsigned char address);
-void writeChar(unsigned char character);
-void clearDisplay();
-void displayOff();
-void setBus(unsigned char byte);
-void send();
-void closeLCD();
-void sigHandler(int);
-void lcdBoot();
-//void display(char*);
+static void initialize();
+static void setAddress(unsigned char address);
+static void writeChar(unsigned char character);
+static void setBus(unsigned char byte);
+static void send();
 
-int main() {		
-	// returns 0 if program runs all the way through
-	return 0;
-}
-
-void lcdBoot(){
+int lcdBoot() {
 	// Creates pointers to interface with the files of the Beaglebone
 	FILE* direction[TOTALPINS];
 	int gpioPins[TOTALPINS] = {LCD_4, LCD_5, LCD_6, LCD_7, LCD_8, LCD_9, LCD_10, LCD_11, LCD_12, LCD_13, LCD_14};
@@ -128,41 +77,39 @@ void lcdBoot(){
 	fprintf(test, "%d", 0);
 	fflush(test);
 
-	// Initialize interupt function for Ctrl-C
-	signal(SIGINT, sigHandler);
-	
 	// Initializes LCD
 	initialize();
 	
-	// Set test pin to 1 in order to confirm location arrived in code
-	fprintf(test, "%d", 1);
-	fflush(test);	
-	
-	while(keepRunning) {
+	// Creat/open pipe file
+	char *path = "./testfifo";
+	if (access(path, F_OK) != 0) {
+		printf("Creating pipe \"testfifo\"\n");
+		mkfifo(path, 0666);
 	}
-	
-	closeLCD();
+
+	// Open pipe
+	printf("Opening pipe\n");
+	fd = open(path, O_RDWR);
+	if (fd == -1) {
+		printf("Error open: %s\n", strerror(errno));
+		return -1;
+	}
 
 	// Closes all accessed files
 	fclose(sys);
 	for (i = 0; i < TOTALPINS; i++) {
 		fclose(direction[i]);
-		fclose(value[i]);
 	}
+	return 0;
 }
 
-// Sets the LCD to its off state if Ctrl+C (signal interrupt) is passed by the user
-void sigHandler(int signo) {
-	if (signo == SIGINT) {
-		printf(" Caught SIGINT\n");
-		keepRunning = 0;
-	}
-}
-
-// Used to put the LCD screen into a shut down state
 void closeLCD() {
 	displayOff();
 	clearDisplay();
+	int i;
+	for (i = 0; i < TOTALPINS; i++) {
+		fclose(value[i]);
+	}
 }
 
 void initialize() {
@@ -298,4 +245,32 @@ void setBus(unsigned char byte) {
 	byte  = byte >> 1;
 	fprintf(value[DB7], "%d", (byte % 2));
 	fflush(value[DB7]);
+}
+
+int printScreen() {
+  // Read in the pre-set number of bytes from pipe
+  ssize_t bytesread = 0;
+  int bytes = 0;
+  char message[SCREEN_SIZE];
+  while (bytesread < SCREEN_SIZE) {
+    bytes = read(fd, message, SCREEN_SIZE - bytesread);
+    if (bytes == -1) {
+      if (errno != EINTR) {
+        printf("Error on read: %s\n", strerror(errno));
+        return -1;
+      }
+      continue;
+    }
+    bytesread += bytes;
+  }
+
+  // Print the string
+  int i;
+  for (i = 0; i < SCREEN_SIZE; i++) {
+    writeChar(message[i]);
+  }
+
+  // Reset the cursor to the begining
+  setAddress((unsigned char) 0x00);
+  return 0;
 }
