@@ -2,8 +2,11 @@
  * Brad Marquez, Joseph Rothlin, Aigerim Shintemirova
  * 22 / April / 2016
  *
- *	BUGS: If USER One enters a word with whitespace, system bugs out
- *  
+ *	Hangman game implemented on C. Two users interface with the terminal and the current game state is shown on the LCD.
+ *  Plays one game of hangman. User One inputs a word and User Two will guess characters until they guess too many wrong
+ * 	characters or they guess all of the characters right. 
+ *	
+ *	GLITCHES: Garbage in the string when 5 wrong guesses are made
  */
 
 #include <stdio.h>
@@ -16,15 +19,19 @@
 #define WRONG_GUESSES 6
 int mygetch(void);
 int main() {
-	printf("\nHello! Welcome to Hangman!\nInstructions: Playing this game requires two users. First, User One will be prompted to\n");
-	printf("enter a word from 1-%d characters. This word will then be displayed on the top line of the LCD,\nrepresented by \"_\" characters. ", MAX_STRING_LEN);
-	printf("User Two will then be expected to input guesses in an attempt to guess\nthe word that User One inputted. User Two is alloted %d wrong character ", WRONG_GUESSES);
-	printf("guesses until they\nlose the game. Wrong character guesses made will be displayed on the bottom line of the LCD.");
+	printf("\nHello! Welcome to Hangman!\n\nINSTRUCTIONS: Playing this game requires two users. First, User One will be prompted to");
+	printf(" enter\na word from 1-%d characters. The word inputted may only include characters [a-z, A-Z] and\nnumbers [0-9]. The word", MAX_STRING_LEN);
+	printf(" will terminate on whitespace, and the word used will be the string\nbefore any whitespace input. ");
+	printf("This word will then be displayed on the top line of the LCD,\nrepresented by \"_\" characters. ");
+	printf("User Two will then be expected to input guesses in an attempt\nto guess the word that User One inputted. User Two may input multiple characters but");
+	printf(" the guess\nused will be the first character inputted. User Two is alloted %d wrong character", WRONG_GUESSES);
+	printf(" guesses until\nthey lose the game. Wrong character guesses made will be displayed on the bottom line of the LCD.");
 	printf("\n\nPress any key to continue.\n");
 		mygetch();
 		char word[MAX_STRING_LEN];
 		int ask = 1;
 		while (ask) {
+			
 			printf("\nUSER ONE: Please input your word (Max. %d characters).\n", MAX_STRING_LEN);
 			char temp[10000];
 			scanf("%16[0-9a-zA-Z]", temp);
@@ -59,6 +66,9 @@ int main() {
 			printf("%s\n", current); // Print current to top line of LCD
 			fflush(stdout);
 			printf("%s\n", wrongGuesses); // Print wrongGuesses to bottom line of LCD
+			if(wrong == WRONG_GUESSES - 1) {
+				printf("\nWARNING: One more wrong guess will result in a loss.\n\n");
+			}
 			printf("USER TWO: Please input a character guess.\n");
 			char inputChar;
 			scanf("\n%c", &inputChar);
@@ -109,10 +119,10 @@ int main() {
 			printf("\n");
 		}
 		if (win){
-			printf("%s\nYOU WIN!!!", current);
+			printf("%s\n\nYOU WIN!!!", current);
 			// display win message on LCD top line
 		} else {
-			printf("%s\nYOU LOSE!!!", current);
+			printf("%s\n\nYOU LOSE!!!", current);
 			//display lose message on LCD top line
 		}
 }
