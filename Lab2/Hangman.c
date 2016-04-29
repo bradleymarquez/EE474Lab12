@@ -72,24 +72,25 @@ int main() {
 	}
 	
 	// Initializes word display line with padded spaces to 16 characters long
-	char current[MAX_STRING_LEN];
-	memmove(current, word, strlen(word) + 1);
+	char current[MAX_STRING_LEN + 1];
+	memmove(current, word, strlen(word));
 	for (i = 0; i < strlen(word); i = i + 1) {
 		current[i] = '_';
 	}
-	for (i = strlen(word); i < MAX_STRING_LEN - 1; i = i + 1) {
+	for (i = strlen(word); i < MAX_STRING_LEN; i = i + 1) {
 		current[i] = ' ';
 	}
 	current[MAX_STRING_LEN] = '\0';
 	
 	// Initializes wrong guesse given by user
-	char wrongGuesses[MAX_STRING_LEN];
+	char wrongGuesses[MAX_STRING_LEN + 1];
 	int wrong = 0;
 	int win = 0;
 	for (i = 0; i < MAX_STRING_LEN; i = i + 1) {
 		wrongGuesses[i] = ' ';
 	}
-	
+	wrongGuesses[MAX_STRING_LEN] = '\0';
+
 	// Continually prompts User Two for characters to guess the word that User One passed
 	while (wrong < WRONG_GUESSES) {
 		printf("Word: %s\n", current); // Prints mystery word representation to the terminal
