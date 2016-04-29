@@ -63,7 +63,8 @@ int main() {
 			printf("%s", word);
 		}
 	}
-	
+	cursorOff();
+
 	// Shift terminal down 100 lines to hide the chosen word from User Two
 	int i;
 	for (i = 0; i < 100; i = i + 1) {
@@ -157,12 +158,13 @@ int main() {
 		
 		if (win) { // goes to win state
 			wrong = WRONG_GUESSES + 1;
-		} else { // continues playing ,displays current scarecrow state
+		} else { // continues playing, displays current scarecrow state
 			printf("\n");
 			printMan(wrong);
 		}
+	}
 		
-		if (win){
+	if (win) {
 			
 		// displays congratulations message on terminal
 		printf("%s\nYOU WIN!!!\n", current);
@@ -301,3 +303,4 @@ void sigHandler(int signo) {
 	}
 }
 	
+

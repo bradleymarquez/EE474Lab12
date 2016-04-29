@@ -49,5 +49,6 @@ void displayOff();
 void closeLCD();
 int lcdBoot();
 int printScreen(int, int);
+void cursorOff();
 
 #endif  // _LEDINIT_H_

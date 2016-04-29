@@ -279,3 +279,14 @@ int printScreen(int fd, int line) {
 	setAddress((unsigned char) 0x00);
 	return 0;
 }
+
+void cursorOff() {
+	usleep(500);
+	fprintf(value[RS], "%d", 0); // Function Set #1
+	fflush(value[RS]);
+	fprintf(value[RW], "%d", 0);
+	fflush(value[RW]);
+	setBus((unsigned char) 0x0c);
+	send();
+	fflush(value[E]);
+}
