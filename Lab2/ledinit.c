@@ -91,7 +91,6 @@ int lcdBoot() {
 	// Open pipe
 	printf("Opening pipe\n");
 	int fd = open(path, O_RDWR);
-	printf("After open%d\n", fd);
 	if (fd == -1) {
 		printf("Error open: %s\n", strerror(errno));
 		return -1;

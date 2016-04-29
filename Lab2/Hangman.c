@@ -25,7 +25,6 @@ void writeToPipe(char[], int, int);
 int main() {
 	// Sets up the path to the FIFO in order to interface with the LCD
 	int fd = lcdBoot();
-	printf("after boot%d\n", fd);
 	signal(SIGINT, sigHandler);
 	if (fd == -1) {
 		printf("Error on lcd boot: %s\n", strerror(errno));
@@ -177,7 +176,7 @@ int main() {
 		
 		// displays loss message on the terminal
 		printf("%s\nYOU LOSE!!!\n", current);
-		
+		printf("The word was %s.", word);
 		// displays lose message on LCD
 		writeToPipe("SORRY :(        ", fd, TOP);
 		writeToPipe("YOU LOSE!       ", fd, BOTTOM);
