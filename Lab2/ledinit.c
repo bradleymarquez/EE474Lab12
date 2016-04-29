@@ -9,7 +9,7 @@
 #include "ledinit.h"
 
 static FILE* value[TOTALPINS];
-
+static char* path = "/root/fifo";
 static void initialize();
 static void setAddress(unsigned char address);
 static void writeChar(unsigned char character);
@@ -81,7 +81,6 @@ int lcdBoot() {
 	initialize();
 	
 	// Creat/open pipe file
-	char *path = "./testfifo";
 	if (access(path, F_OK) != 0) {
 		printf("Creating pipe \"testfifo\"\n");
 		mkfifo(path, 0666);
@@ -89,7 +88,8 @@ int lcdBoot() {
 
 	// Open pipe
 	printf("Opening pipe\n");
-	fd = open(path, O_RDWR);
+	int fd = open(path, O_RDWR);
+	printf("After open%d\n", fd);
 	if (fd == -1) {
 		printf("Error open: %s\n", strerror(errno));
 		return -1;
@@ -100,7 +100,7 @@ int lcdBoot() {
 	for (i = 0; i < TOTALPINS; i++) {
 		fclose(direction[i]);
 	}
-	return 0;
+	return fd;
 }
 
 void closeLCD() {
@@ -110,6 +110,7 @@ void closeLCD() {
 	for (i = 0; i < TOTALPINS; i++) {
 		fclose(value[i]);
 	}
+	unlink(path);
 }
 
 void initialize() {
@@ -247,7 +248,7 @@ void setBus(unsigned char byte) {
 	fflush(value[DB7]);
 }
 
-int printScreen() {
+int printScreen(int fd, int line) {
   // Read in the pre-set number of bytes from pipe
   ssize_t bytesread = 0;
   int bytes = 0;
@@ -263,7 +264,11 @@ int printScreen() {
     }
     bytesread += bytes;
   }
-
+  if (!line) {
+  	setAddress((unsigned char) 0x00);
+  } else {
+	setAddress((unsigned char) 0x40);
+  }
   // Print the string
   int i;
   for (i = 0; i < SCREEN_SIZE; i++) {

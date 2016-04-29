@@ -14,16 +14,22 @@
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
-#include "ledinit.c"
+#include "ledinit.h"
 
 #define MAX_STRING_LEN 16
 #define WRONG_GUESSES 6
+
 int mygetch(void);
 void printMan(int);
 void sigHandler(int);
+void writeToPipe(char[], int, int);
 int main() {
+	int fd = lcdBoot();
+	printf("after boot%d\n", fd);
 	signal(SIGINT, sigHandler);
-	initializeBoot();
+	if (fd == -1) {
+		printf("Error on lcd boot: %s\n", strerror(errno));
+	}
 	printf("\nHello! Welcome to Hangman!\n\nINSTRUCTIONS: Playing this game requires two users. First, User One will be prompted to");
 	printf(" enter\na word from 1-%d characters. The word inputted may only include characters [a-z, A-Z] and\nnumbers [0-9]. The word", MAX_STRING_LEN);
 	printf(" will terminate on whitespace, and the word used will be the string\nbefore any whitespace input. ");
@@ -37,7 +43,7 @@ int main() {
 		int ask = 1;
 		while (ask) { // gets input from User One for word to use
 			printf("\nUSER ONE: Please input your word (Max. %d characters).\n", MAX_STRING_LEN);
-			char temp[10000];
+			char temp[16];
 			scanf("%16[0-9a-zA-Z]", temp);
 			int ch;
 			while ((ch=getchar()) != EOF && ch != '\n');
@@ -50,6 +56,7 @@ int main() {
 			} else {
 				memmove(word, temp, strlen(temp) + 1);
 				ask = 0;
+				printf("%s", word);
 			}
 		}
 		int i;
@@ -57,15 +64,16 @@ int main() {
 			printf("\n");
 		}
 		// Print strlen(word) "_" characters on LCD first line
-		char current[strlen(word)];
+		char current[MAX_STRING_LEN];
 		memmove(current, word, strlen(word) + 1);
 		for (i = 0; i < strlen(word); i = i + 1) { // initializes word display line with padded spaces to 16 characters long
 			current[i] = '_';
 		}
-		for (i = strlen(word); i < MAX_STRING_LEN; i = i + 1) {
+		for (i = strlen(word); i < MAX_STRING_LEN - 1; i = i + 1) {
 			current[i] = ' ';
 		}
-		char wrongGuesses[WRONG_GUESSES * 2];
+		current[MAX_STRING_LEN] = '\0';
+		char wrongGuesses[MAX_STRING_LEN];
 		int wrong = 0;
 		int win = 0;
 		for (i = 0; i < MAX_STRING_LEN; i = i + 1) { // Initializes wrongGuesses to be blank and 16 characters long
@@ -73,9 +81,9 @@ int main() {
 		}
 		while (wrong < WRONG_GUESSES) {
 			printf("Word: %s\n", current); // Print current to top line of LCD
-			writeToLCD(current); // ********************************
+			writeToPipe(current, fd, TOP); // ********************************
 			printf("Wrong Guesses: %s\n", wrongGuesses); // Print wrongGuesses to bottom line of LCD
-			writeToLCD(wrongGuesses); // *****************
+			writeToPipe(wrongGuesses, fd, BOTTOM); // *****************
 			if(wrong == WRONG_GUESSES - 1) {
 				printf("\nWARNING: One more wrong guess will result in a loss.\n\n");
 			}
@@ -130,20 +138,25 @@ int main() {
 			printMan(wrong);
 		}
 		if (win){
-			printf("%s\n\nYOU WIN!!!\n\n", current);
+			printf("%s\nYOU WIN!!!\n", current);
 			// display win message on LCD top line
-			writeToLCD("YOU WIN"); // ********************************
+			writeToPipe("CONGRATULATIONS!", fd, TOP);
+			writeToPipe("YOU WIN!        ", fd, BOTTOM);
 		} else {
-			printf("%s\n\nYOU LOSE!!!\n\n", current);
+			printf("%s\nYOU LOSE!!!\n", current);
 			//display lose message on LCD top line
-			writeToLCD("YOU LOSE"); // ********************************
+			writeToPipe("SORRY :(        ", fd, TOP);
+			writeToPipe("YOU LOSE!       ", fd, BOTTOM);
 		}
-	printf("\n\nPress any key to exit.\n");
+	printf("\nPress any key to exit.\n");
 	mygetch(); // waits for any user input
 	closeLCD();
+	return 0;
 }
 
 int mygetch(void) {
+
+
   int ch;
   struct termios oldt, newt;
 
@@ -155,6 +168,26 @@ int mygetch(void) {
   tcsetattr ( STDIN_FILENO, TCSANOW, &oldt );
 
   return ch;
+}
+
+void writeToPipe(char send[], int fd, int line) {
+	  ssize_t bytes, written = 0;
+	  while (written < SCREEN_SIZE) {
+	    bytes = write(fd, send, SCREEN_SIZE - written);
+	    if (bytes == -1) {
+	      if (errno != EINTR) {
+		printf("During write%d\n", fd);
+		printf("Error on write: %s\n", strerror(errno));
+		// clear the pipe
+		return;
+	      }
+	      continue;
+	    }
+	    written += bytes;
+	  } 
+	if (printScreen(fd, line) == -1) {
+		printf("Error on print: %s\n", strerror(errno));
+	}
 }
 
 void printMan(int i) {

@@ -41,13 +41,13 @@
 #define LCD_13 44 // DB6 Pin - GPIO_PIN_44
 #define LCD_14 26 // DB7 Pin - GPIO_PIN_26
 #define TEST 112 // Used for testing only
-
-extern int fd;
+#define TOP 0
+#define BOTTOM 1
 
 void clearDisplay();
 void displayOff();
 void closeLCD();
 int lcdBoot();
-int printScreen();
+int printScreen(int, int);
 
 #endif  // _LEDINIT_H_
