@@ -51,8 +51,8 @@ int main() {
 			for(i = 0; i < strlen(temp); i = i + 1){
 				temp[i] = tolower(temp[i]);
 			}
-			if (strlen(temp) > MAX_STRING_LEN) {
-				printf("The word given was too long. Please try again.\n");
+			if (strlen(temp) > MAX_STRING_LEN || strlen(temp) == 0) {
+				printf("The word has an illegal amount of characters. Please try again.\n");
 			} else {
 				memmove(word, temp, strlen(temp) + 1);
 				ask = 0;
