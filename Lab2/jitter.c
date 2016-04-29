@@ -10,7 +10,7 @@
 #include <unistd.h> // for usleep
 
 #define GPIO_PIN_115 115 // GPIO_PIN_115 @ P9
-const int sleepTime = 50000; // delay time in microseconds (20 Hz)
+const int sleepTime = 100; // delay time in microseconds (20 Hz)
 int main() {
 
 	// Creates pointers to interface with the files of the Beaglebone
@@ -39,11 +39,12 @@ int main() {
 
 	// Sets GPIO Pin 115 high and low periodically with a period of 2 us
 	while(1) {
-		printf("This print function should create more jitter every time it is run.");
+		printf("This print function should create more jitter every time it is run.\n");
 		fprintf(val115, "%d", 0);
 		fflush(val115);
 		usleep(sleepTime);
 		fprintf(val115,"%d", 1);
+		fflush(val115);
 		usleep(sleepTime);
 	}
 
