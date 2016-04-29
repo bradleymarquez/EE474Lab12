@@ -2,8 +2,8 @@
  * Brad Marquez, Joseph Rothlin, Aigerim Shintemirova
  * 10 / April / 2016
  *
- *	
- *  
+ *	Flips the GPIO pin 115 from high to low in order
+ *  to test schedule jitter of the Beaglebone
  */
 
 #include <stdio.h>  // for File IO and printf
