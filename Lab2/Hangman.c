@@ -6,7 +6,6 @@
  * 	Plays one game of hangman. User One inputs a word and User Two will guess characters until they guess too many wrong
  * 	characters or they guess all of the characters right. 
  *	
- *	
  */
 
 #include <stdio.h>
@@ -24,12 +23,15 @@ void printMan(int);
 void sigHandler(int);
 void writeToPipe(char[], int, int);
 int main() {
+	// Sets up the path to the FIFO in order to interface with the LCD
 	int fd = lcdBoot();
 	printf("after boot%d\n", fd);
 	signal(SIGINT, sigHandler);
 	if (fd == -1) {
 		printf("Error on lcd boot: %s\n", strerror(errno));
 	}
+	
+	// Prints the instructions for the user to view on the terminal
 	printf("\nHello! Welcome to Hangman!\n\nINSTRUCTIONS: Playing this game requires two users. First, User One will be prompted to");
 	printf(" enter\na word from 1-%d characters. The word inputted may only include characters [a-z, A-Z] and\nnumbers [0-9]. The word", MAX_STRING_LEN);
 	printf(" will terminate on whitespace, and the word used will be the string\nbefore any whitespace input. ");
@@ -38,126 +40,154 @@ int main() {
 	printf(" the guess\nused will be the first character inputted. User Two is alloted %d wrong character", WRONG_GUESSES);
 	printf(" guesses until\nthey lose the game. Wrong character guesses made will be displayed on the bottom line of the LCD.");
 	printf("\n\nPress any key to continue.\n");
-		mygetch(); // waits for any user input
-		char word[MAX_STRING_LEN];
-		int ask = 1;
-		while (ask) { // gets input from User One for word to use
-			printf("\nUSER ONE: Please input your word (Max. %d characters).\n", MAX_STRING_LEN);
-			char temp[16];
-			scanf("%16[0-9a-zA-Z]", temp);
-			int ch;
-			while ((ch=getchar()) != EOF && ch != '\n');
-			int i;
-			for(i = 0; i < strlen(temp); i = i + 1){
-				temp[i] = tolower(temp[i]);
-			}
-			if (strlen(temp) > MAX_STRING_LEN || strlen(temp) == 0) {
-				printf("The word has an illegal amount of characters. Please try again.\n");
-			} else {
-				memmove(word, temp, strlen(temp) + 1);
-				ask = 0;
-				printf("%s", word);
-			}
-		}
+	mygetch(); // waits for any user input
+	
+	 // gets input from User One for word to use
+	char word[MAX_STRING_LEN];
+	int ask = 1;
+	while (ask) {
+		printf("\nUSER ONE: Please input your word (Max. %d characters).\n", MAX_STRING_LEN);
+		char temp[16];
+		scanf("%16[0-9a-zA-Z]", temp);
+		int ch;
+		while ((ch=getchar()) != EOF && ch != '\n');
 		int i;
-		for (i = 0; i < 100; i = i + 1) { // Shift terminal down 100 lines to hide the chosen word from User Two
-			printf("\n");
+		for(i = 0; i < strlen(temp); i = i + 1){
+			temp[i] = tolower(temp[i]);
 		}
-		// Print strlen(word) "_" characters on LCD first line
-		char current[MAX_STRING_LEN];
-		memmove(current, word, strlen(word) + 1);
-		for (i = 0; i < strlen(word); i = i + 1) { // initializes word display line with padded spaces to 16 characters long
-			current[i] = '_';
-		}
-		for (i = strlen(word); i < MAX_STRING_LEN - 1; i = i + 1) {
-			current[i] = ' ';
-		}
-		current[MAX_STRING_LEN] = '\0';
-		char wrongGuesses[MAX_STRING_LEN];
-		int wrong = 0;
-		int win = 0;
-		for (i = 0; i < MAX_STRING_LEN; i = i + 1) { // Initializes wrongGuesses to be blank and 16 characters long
-			wrongGuesses[i] = ' ';
-		}
-		while (wrong < WRONG_GUESSES) {
-			printf("Word: %s\n", current); // Print current to top line of LCD
-			writeToPipe(current, fd, TOP); // ********************************
-			printf("Wrong Guesses: %s\n", wrongGuesses); // Print wrongGuesses to bottom line of LCD
-			writeToPipe(wrongGuesses, fd, BOTTOM); // *****************
-			if(wrong == WRONG_GUESSES - 1) {
-				printf("\nWARNING: One more wrong guess will result in a loss.\n\n");
-			}
-			printf("USER TWO: Please input a character guess.\n");
-			char inputChar;
-			scanf("\n%c", &inputChar);
-			int ch;
-			while ((ch=getchar()) != EOF && ch != '\n');
-			inputChar = tolower(inputChar);
-			int j;
-			int guessed = 0;
-			for (j = 0; j < strlen(wrongGuesses); j = j + 1) {
-				if (wrongGuesses[j] == inputChar) {
-					guessed = 1;
-				}
-			}
-			for (j = 0; j < strlen(current); j = j + 1){
-				if (current[j] == inputChar) {
-					guessed = 1;
-				}
-			}
-			int found = 0;
-			for (j = 0; j < strlen(word); j = j + 1) {
-				if (word[j] == inputChar) {
-					current[j] = inputChar;
-					found = 1;
-				}
-			}
-			if (!found && !guessed) {
-				printf("\nLetter not found!\n");
-				wrongGuesses[wrong * 2] = inputChar;
-				wrongGuesses[wrong * 2 + 1] = ' ';
-				wrong = wrong + 1;
-			} else if (guessed) {
-				printf("\nYou have already guessed this character.\n");
-			} else {
-				printf("\nLetter found!\n");
-			}
-			int foundAll = 1;
-			for (j = 0; j < strlen(current); j = j + 1) {
-				if (current[j] == '_') {
-					foundAll = 0;
-				}
-			}
-			if (foundAll) {
-				win = 1;
-			}
-			if (win) {
-				wrong = WRONG_GUESSES + 1;
-			} else {
-				printf("\n");
-				printMan(wrong);
-			}
-		}
-		if (win){
-			printf("%s\nYOU WIN!!!\n", current);
-			// display win message on LCD top line
-			writeToPipe("CONGRATULATIONS!", fd, TOP);
-			writeToPipe("YOU WIN!        ", fd, BOTTOM);
+		if (strlen(temp) > MAX_STRING_LEN || strlen(temp) == 0) {
+			printf("The word has an illegal amount of characters. Please try again.\n");
 		} else {
-			printf("%s\nYOU LOSE!!!\n", current);
-			//display lose message on LCD top line
-			writeToPipe("SORRY :(        ", fd, TOP);
-			writeToPipe("YOU LOSE!       ", fd, BOTTOM);
+			memmove(word, temp, strlen(temp) + 1);
+			ask = 0;
+			printf("%s", word);
 		}
+	}
+	
+	// Shift terminal down 100 lines to hide the chosen word from User Two
+	int i;
+	for (i = 0; i < 100; i = i + 1) {
+		printf("\n");
+	}
+	
+	// Initializes word display line with padded spaces to 16 characters long
+	char current[MAX_STRING_LEN];
+	memmove(current, word, strlen(word) + 1);
+	for (i = 0; i < strlen(word); i = i + 1) {
+		current[i] = '_';
+	}
+	for (i = strlen(word); i < MAX_STRING_LEN - 1; i = i + 1) {
+		current[i] = ' ';
+	}
+	current[MAX_STRING_LEN] = '\0';
+	
+	// Initializes wrong guesse given by user
+	char wrongGuesses[MAX_STRING_LEN];
+	int wrong = 0;
+	int win = 0;
+	for (i = 0; i < MAX_STRING_LEN; i = i + 1) {
+		wrongGuesses[i] = ' ';
+	}
+	
+	// Continually prompts User Two for characters to guess the word that User One passed
+	while (wrong < WRONG_GUESSES) {
+		printf("Word: %s\n", current); // Prints mystery word representation to the terminal
+		writeToPipe(current, fd, TOP); // Prints mystery word representation to top line of LCD
+		printf("Wrong Guesses: %s\n", wrongGuesses); // Prints wrong character guesses to the terminal
+		writeToPipe(wrongGuesses, fd, BOTTOM); // Prints wrong character guesses to bottom line of LCD
+		
+		// Warns the user when one more incorrect character guess will cause a loss
+		if(wrong == WRONG_GUESSES - 1) {
+			printf("\nWARNING: One more wrong guess will result in a loss.\n\n");
+		}
+		
+		// Prompts User two for a character guess
+		printf("USER TWO: Please input a character guess.\n");
+		char inputChar;
+		scanf("\n%c", &inputChar);
+		int ch;
+		while ((ch=getchar()) != EOF && ch != '\n');
+		inputChar = tolower(inputChar);
+		int j;
+		
+		// Checks if User Two has already guessed the character passed
+		int guessed = 0;
+		for (j = 0; j < strlen(wrongGuesses); j = j + 1) {
+			if (wrongGuesses[j] == inputChar) {
+				guessed = 1;
+			}
+		}
+		for (j = 0; j < strlen(current); j = j + 1){
+			if (current[j] == inputChar) {
+				guessed = 1;
+			}
+		}
+		
+		// Checks if the character passed is in the mystery word
+		int found = 0;
+		for (j = 0; j < strlen(word); j = j + 1) {
+			if (word[j] == inputChar) {
+				current[j] = inputChar;
+				found = 1;
+			}
+		}
+		
+		// Uses the character passed to go to the next game state
+		if (!found && !guessed) {
+			printf("\nLetter not found!\n");
+			wrongGuesses[wrong * 2] = inputChar;
+			wrongGuesses[wrong * 2 + 1] = ' ';
+			wrong = wrong + 1;
+		} else if (guessed) {
+			printf("\nYou have already guessed this character.\n");
+		} else {
+			printf("\nLetter found!\n");
+		}
+		
+		// Checks if the User Two has won
+		int foundAll = 1;
+		for (j = 0; j < strlen(current); j = j + 1) {
+			if (current[j] == '_') {
+				foundAll = 0;
+			}
+		}
+		if (foundAll) {
+			win = 1;
+		}
+		
+		if (win) { // goes to win state
+			wrong = WRONG_GUESSES + 1;
+		} else { // continues playing ,displays current scarecrow state
+			printf("\n");
+			printMan(wrong);
+		}
+		
+		if (win){
+			
+		// displays congratulations message on terminal
+		printf("%s\nYOU WIN!!!\n", current);
+		
+		// display win message on LCD
+		writeToPipe("CONGRATULATIONS!", fd, TOP);
+		writeToPipe("YOU WIN!        ", fd, BOTTOM);
+	} else {
+		
+		// displays loss message on the terminal
+		printf("%s\nYOU LOSE!!!\n", current);
+		
+		// displays lose message on LCD
+		writeToPipe("SORRY :(        ", fd, TOP);
+		writeToPipe("YOU LOSE!       ", fd, BOTTOM);
+	}
+	
 	printf("\nPress any key to exit.\n");
 	mygetch(); // waits for any user input
-	closeLCD();
+	closeLCD(); // Closes and clears the LCD once Hangman game finishes
 	return 0;
 }
 
+// Waits for any user input, lets the program continue once an input is passed
 int mygetch(void) {
-
-
   int ch;
   struct termios oldt, newt;
 
@@ -171,6 +201,9 @@ int mygetch(void) {
   return ch;
 }
 
+// Writes given send string to the LCD through the FIFO using given path fd
+// The string is printed to either the top or bottom line based on given integer line
+// The line printed to the pipe must be 16 characters (screen size)
 void writeToPipe(char send[], int fd, int line) {
 	  ssize_t bytes, written = 0;
 	  while (written < SCREEN_SIZE) {
@@ -191,6 +224,7 @@ void writeToPipe(char send[], int fd, int line) {
 	}
 }
 
+// Prints scarecrow based on given integer (# of wrong guesses)
 void printMan(int i) {
 	 switch (i) {
 	      case 0 :
