@@ -249,33 +249,33 @@ void setBus(unsigned char byte) {
 }
 
 int printScreen(int fd, int line) {
-  // Read in the pre-set number of bytes from pipe
-  ssize_t bytesread = 0;
-  int bytes = 0;
-  char message[SCREEN_SIZE];
-  while (bytesread < SCREEN_SIZE) {
-    bytes = read(fd, message, SCREEN_SIZE - bytesread);
-    if (bytes == -1) {
-      if (errno != EINTR) {
-        printf("Error on read: %s\n", strerror(errno));
-        return -1;
-      }
-      continue;
-    }
-    bytesread += bytes;
-  }
-  if (!line) {
-  	setAddress((unsigned char) 0x00);
-  } else {
-	setAddress((unsigned char) 0x40);
-  }
-  // Print the string
-  int i;
-  for (i = 0; i < SCREEN_SIZE; i++) {
-    writeChar(message[i]);
-  }
+	// Read in the pre-set number of bytes from pipe
+	ssize_t bytesread = 0;
+	int bytes = 0;
+	char message[SCREEN_SIZE];
+	while (bytesread < SCREEN_SIZE) {
+		bytes = read(fd, message, SCREEN_SIZE - bytesread);
+		if (bytes == -1) {
+			if (errno != EINTR) {
+				printf("Error on read: %s\n", strerror(errno));
+				return -1;
+			}
+			continue;
+		}
+		bytesread += bytes;
+ 	}
+	if (!line) {
+		setAddress((unsigned char) 0x00);
+	} else {
+		setAddress((unsigned char) 0x40);
+	}
+	// Print the string
+	int i;
+	for (i = 0; i < SCREEN_SIZE; i++) {
+		writeChar(message[i]);
+	}
 
-  // Reset the cursor to the begining
-  setAddress((unsigned char) 0x00);
-  return 0;
+	// Reset the cursor to the begining
+	setAddress((unsigned char) 0x00);
+	return 0;
 }
