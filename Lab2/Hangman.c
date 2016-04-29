@@ -133,9 +133,10 @@ int main() {
 			}
 			if (win) {
 				wrong = WRONG_GUESSES + 1;
+			} else {
+				printf("\n");
+				printMan(wrong);
 			}
-			printf("\n");
-			printMan(wrong);
 		}
 		if (win){
 			printf("%s\nYOU WIN!!!\n", current);
