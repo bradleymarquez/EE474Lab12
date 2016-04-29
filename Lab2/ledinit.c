@@ -2,7 +2,7 @@
  * Brad Marquez, Joseph Rothlin, Aigerim Shintemirova
  * 22 / April / 2016
  *
- *	
+ * This program is used to interface with the Newhaven LCD.	
  *  
  */
 
@@ -16,6 +16,8 @@ static void writeChar(unsigned char character);
 static void setBus(unsigned char byte);
 static void send();
 
+// Sets up pointers to the Beaglebone files to interface with the LCD, initializes the LCD, and
+// sets up the named pipe used to interface with the LCD
 int lcdBoot() {
 	// Creates pointers to interface with the files of the Beaglebone
 	FILE* direction[TOTALPINS];
@@ -103,6 +105,7 @@ int lcdBoot() {
 	return fd;
 }
 
+// Turns off and clears the LCD, closes accessed pointers, and deletes the named pipe used
 void closeLCD() {
 	displayOff();
 	clearDisplay();
@@ -113,6 +116,7 @@ void closeLCD() {
 	unlink(path);
 }
 
+// Initializes the LCD by following a specific set of instructions
 void initialize() {
 	usleep(15001);
 	
@@ -158,8 +162,6 @@ void initialize() {
 
 	usleep(500);
 }
-
-
 
 // Flips enable pin which cause LCD to read current signal on the bus
 void send() {
@@ -248,6 +250,8 @@ void setBus(unsigned char byte) {
 	fflush(value[DB7]);
 }
 
+// Reads from the given named pipe and prints the 16-character long
+// contents on the specified line of the LCD screen
 int printScreen(int fd, int line) {
 	// Read in the pre-set number of bytes from pipe
 	ssize_t bytesread = 0;
@@ -280,6 +284,7 @@ int printScreen(int fd, int line) {
 	return 0;
 }
 
+// Turns the cursor off on the LCD screen
 void cursorOff() {
 	usleep(500);
 	fprintf(value[RS], "%d", 0); // Function Set #1
