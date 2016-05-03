@@ -101,6 +101,28 @@ void shiftRegister(char num) {
     int i = 0;
     int j = 0;
     int binary[8];
+    
+    int temporary;
+
+    temporary = num;
+    while (j < 8) { // building binary number
+		if ((temporary % 2) > 0) {
+			binary[j] = 1;
+		} else {
+			binary[j] = 0;
+		}
+		temporary = temporary / 2;
+		j++;
+	}
+
+	while (i < 8) {
+		gpio_direction_output(47, 0);	//configure the default value of the output pin - clock off
+		gpio_direction_output(45, binary[i]);	//shifting data bit at each clock transition
+		usleep(10000);
+		gpio_direction_output(47, 1);	//clock back on after the data bit is shifted
+		usleep(10000);
+		i++; //the count
+	}
 
 
 }
