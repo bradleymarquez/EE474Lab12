@@ -14,7 +14,7 @@
 // assigns device structure data.
 static int __init driver_entry(void) {
 	// REGISTERIONG OUR DEVICE WITH THE SYSTEM
-	// (1) ALLOCATE DINAMICALLY TO ASSIGN OUR DEVICE
+	// (1) ALLOCATE DYNAMICALLY TO ASSIGN OUR DEVICE
 	int ret = alloc_chrdev_region(&dev_num, 0, 1, DEVICE_NAME);
 	if (ret < 0) {
 		printk(KERN_ALERT "new_char: Failed to allocate a major number\n");
@@ -36,18 +36,68 @@ static int __init driver_entry(void) {
 	}
 	// Initialize SEMAPHORE
 	sema_init(&virtual_device.sem, 1);
-
-	usleep(10000);
+	msleep(10);
 
 	gpio_request(45, "Data");
 	gpio_request(47, "Latch");
 	gpio_request(67, "Clock");
+	gpio_request(68, "RS");
+	gpio_request(44, "R/W");
+	gpio_request(26, "E");
 
 	gpio_export(45, true);
 	gpio_export(47, true);
 	gpio_export(67, true);
+	gpio_export(68, true);
+	gpio_export(44, true);
+	gpio_export(26, true);
+
+	// Initialization start
+	msleep(15);
+
+	gpio_direction_output(68, 0);
+	gpio_direction_output(44, 0);
+
+
+	shiftRegister((unsigned char) 0x30);
+	lcdSend();
+	msleep(5);
+	
+	lcdSend();
+	msleep(5);
+
+	lcdSend(); // Function Set #3
+	msleep(5);
+
+	shiftRegister((unsigned char) 0x38); // Function Set #4
+	lcdSend();
+	
+	msleep(5);
+
+	shiftRegister((unsigned char) 0x08); // Display OFF
+	lcdSend();
+	msleep(5);
+
+	shiftRegister((unsigned char) 0x01); // Clear Display
+	lcdSend();
+	msleep(5);
+
+	shiftRegister((unsigned char) 0x0c); // Entry Mode Set
+	lcdSend();
+	msleep(5);
+
+	shiftRegister((unsigned char) 0x0f); // Display on w/ cursor & blink on
+	lcdSend();
+	msleep(5);
+	// Initialization end
 
 	return 0;
+}
+
+void lcdSend() {
+	gpio_direction_output(26, 1);	// flip enable high
+	msleep(5);
+	gpio_direction_output(26, 0); // sends on falling edge
 }
 
 // called up exit.
@@ -98,7 +148,7 @@ ssize_t device_write(struct file* filp, const char* bufSource, size_t bufCount, 
 
 // shift register module
 void shiftRegister(char num) {
-    int i = 0;
+    int i = 7;
     int j = 0;
     int binary[8];
     
@@ -111,17 +161,19 @@ void shiftRegister(char num) {
 		} else {
 			binary[j] = 0;
 		}
-		temporary = temporary / 2;
+		temporary = temporary >> 1;
 		j++;
 	}
 
-	while (i < 8) {
-		gpio_direction_output(67, 0);	//configure the default value of the output pin - clock off
+	while (i >= 0) {
+		gpio_direction_output(67, 1);
+		gpio_direction_output(47, 0);	// configure the default value of the output pin - latch off
 		gpio_direction_output(45, binary[i]);	//shifting data bit at each clock transition
-		usleep(10000);
-		gpio_direction_output(67, 1);	//clock back on after the data bit is shifted
-		usleep(10000);
-		i++; //the count
+		msleep(1);
+		gpio_direction_output(67, 0);
+		gpio_direction_output(47, 1);	// latch back on after the data bit is shifted
+		msleep(1);
+		i--; //the count
 	}
 
 
@@ -130,3 +182,4 @@ void shiftRegister(char num) {
 MODULE_LICENSE("GPL"); // module license: required to use some functionalities.
 module_init(driver_entry); // declares which function runs on init.
 module_exit(driver_exit);  // declares which function runs on exit.
+
