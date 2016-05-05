@@ -37,7 +37,7 @@ static int __init driver_entry(void) {
 	// Initialize SEMAPHORE
 	sema_init(&virtual_device.sem, 1);
 	msleep(10);
-
+	
 	gpio_request(45, "Data");
 	gpio_request(47, "Latch");
 	gpio_request(67, "Clock");
@@ -53,12 +53,12 @@ static int __init driver_entry(void) {
 	gpio_export(26, true);
 
 	// Initialization start
+	printk("Initialization start\n");
 	msleep(15);
 
 	gpio_direction_output(68, 0);
 	gpio_direction_output(44, 0);
-
-
+	
 	shiftRegister((unsigned char) 0x30);
 	lcdSend();
 	msleep(5);
@@ -71,7 +71,6 @@ static int __init driver_entry(void) {
 
 	shiftRegister((unsigned char) 0x38); // Function Set #4
 	lcdSend();
-	
 	msleep(5);
 
 	shiftRegister((unsigned char) 0x08); // Display OFF
@@ -91,6 +90,13 @@ static int __init driver_entry(void) {
 	msleep(5);
 	// Initialization end
 
+	printk("Initialization end\n");
+	gpio_free(45);
+	gpio_free(47);
+	gpio_free(67);
+	gpio_free(68);
+	gpio_free(44);
+	gpio_free(26);
 	return 0;
 }
 
@@ -106,6 +112,7 @@ static void __exit driver_exit(void) {
 	cdev_del(mcdev);
 	unregister_chrdev_region(dev_num, 1);
 	printk(KERN_ALERT "new_char: successfully unloaded\n");
+
 }
 
 // Called on device file open
@@ -166,17 +173,18 @@ void shiftRegister(char num) {
 	}
 
 	while (i >= 0) {
-		gpio_direction_output(67, 1);
-		gpio_direction_output(47, 0);	// configure the default value of the output pin - latch off
+		gpio_direction_output(67, 1);	// configure the default value of the output pin - clock off
 		gpio_direction_output(45, binary[i]);	//shifting data bit at each clock transition
 		msleep(1);
-		gpio_direction_output(67, 0);
-		gpio_direction_output(47, 1);	// latch back on after the data bit is shifted
+		gpio_direction_output(67, 0);	// clock back on after the data bit is shifted
 		msleep(1);
 		i--; //the count
 	}
-
-
+	gpio_direction_output(47, 0);
+	msleep(1);
+	gpio_direction_output(47, 1);
+	msleep(1);
+	gpio_direction_output(47, 0);
 }
 
 MODULE_LICENSE("GPL"); // module license: required to use some functionalities.
