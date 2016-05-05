@@ -91,12 +91,6 @@ static int __init driver_entry(void) {
 	// Initialization end
 
 	printk("Initialization end\n");
-	gpio_free(45);
-	gpio_free(47);
-	gpio_free(67);
-	gpio_free(68);
-	gpio_free(44);
-	gpio_free(26);
 	return 0;
 }
 
@@ -109,6 +103,12 @@ void lcdSend() {
 // called up exit.
 // unregisters the device and all associated gpios with it.
 static void __exit driver_exit(void) {
+	gpio_free(45);
+	gpio_free(47);
+	gpio_free(67);
+	gpio_free(68);
+	gpio_free(44);
+	gpio_free(26);
 	cdev_del(mcdev);
 	unregister_chrdev_region(dev_num, 1);
 	printk(KERN_ALERT "new_char: successfully unloaded\n");
