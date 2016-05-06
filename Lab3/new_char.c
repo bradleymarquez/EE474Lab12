@@ -45,13 +45,6 @@ static int __init driver_entry(void) {
 	gpio_request(44, "R/W");
 	gpio_request(26, "E");
 
-	gpio_export(45, true);
-	gpio_export(47, true);
-	gpio_export(67, true);
-	gpio_export(68, true);
-	gpio_export(44, true);
-	gpio_export(26, true);
-
 	gpio_direction_output(45, 0);
 	gpio_direction_output(47, 0);
 	gpio_direction_output(67, 0);
@@ -167,38 +160,36 @@ ssize_t device_write(struct file* filp, const char* bufSource, size_t bufCount, 
 
 // shift register module
 void shiftRegister(char num) {
-    int i = 7;
-    int j = 0;
-    int binary[8];
+	int i = 7;
+	int j = 0;
+	int binary[8];
     
-    int temporary;
+	int temporary = num;
 
-    temporary = num;
-    while (j < 8) { // building binary number
-		if ((temporary % 2) > 0) {
-			binary[j] = 1;
-		} else {
-			binary[j] = 0;
-		}
+	while (j < 8) { // building binary number
+		binary[j] = temporary % 2;
 		temporary = temporary >> 1;
 		j++;
 	}
 
-	printk("\n\n");
+	/*printk("\n\n");
 	for (j = 0; j < 8; j++) {
 		printk("%d", binary[j]);
 	}
-	printk("\n\n");
+	printk("\n\n");*/
 
 	while (i >= 0) {
 		gpio_set_value(45, binary[i]);	//shifting data bit at each clock transition
-				gpio_set_value(67, 0);	// clock back on after the data bit is shifted
-	msleep(1);
-		gpio_set_value(67, 1);	// configure the default value of the output pin - clock off
-		
-		msleep(1);
+
 		gpio_set_value(67, 0);	// clock back on after the data bit is shifted
 		msleep(1);
+
+		gpio_set_value(67, 1);	// configure the default value of the output pin - clock off		
+		msleep(1);
+
+		gpio_set_value(67, 0);	// clock back on after the data bit is shifted
+		msleep(1);
+
 		i--; //the count
 	}
 	gpio_set_value(47, 0);
@@ -206,6 +197,7 @@ void shiftRegister(char num) {
 	gpio_set_value(47, 1);
 	msleep(1);
 	gpio_set_value(47, 0);
+	msleep(1);
 }
 
 MODULE_LICENSE("GPL"); // module license: required to use some functionalities.
