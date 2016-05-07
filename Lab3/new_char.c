@@ -51,54 +51,47 @@ static int __init driver_entry(void) {
 	gpio_direction_output(68, 0);
 	gpio_direction_output(44, 0);
 	gpio_direction_output(26, 0);
-
-	// Initialization start
-	printk("Initialization start\n");
-	msleep(15);
-
-	gpio_direction_output(45, 0);
-	gpio_direction_output(47, 0);
-	gpio_direction_output(67, 0);
-	gpio_direction_output(68, 0);
-	gpio_direction_output(44, 0);
-	gpio_direction_output(26, 0);
-
 	
-	shiftRegister((unsigned char) 0x30);
-	lcdSend();
-	msleep(5);
-	
-	lcdSend();
-	msleep(5);
-
-	lcdSend(); // Function Set #3
-	msleep(5);
-
-	shiftRegister((unsigned char) 0x38); // Function Set #4
-	lcdSend();
-	msleep(5);
-
-	shiftRegister((unsigned char) 0x08); // Display OFF
-	lcdSend();
-	msleep(5);
-
-	shiftRegister((unsigned char) 0x01); // Clear Display
-	lcdSend();
-	msleep(5);
-
-	shiftRegister((unsigned char) 0x0c); // Entry Mode Set
-	lcdSend();
-	msleep(5);
-
-	shiftRegister((unsigned char) 0x0f); // Display on w/ cursor & blink on
-	lcdSend();
-	msleep(5);
-	// Initialization end
-
-	printk("Initialization end\n");
+	initialize();
 	return 0;
 }
 
+void initialize() {
+	gpio_direction_output(68, 0);
+	gpio_direction_output(44, 0);
+
+	msleep(15);
+	
+	shiftRegister((unsigned char) 0x30); // Function Set #1
+	lcdSend();
+	msleep(5);
+	
+	lcdSend(); // Function Set #2
+	msleep(1);
+
+	lcdSend(); // Function Set #3
+	msleep(1);
+
+	shiftRegister((unsigned char) 0x38); // Function Set #4
+	lcdSend();
+	msleep(1);
+
+	shiftRegister((unsigned char) 0x08); // Display OFF
+	lcdSend();
+	msleep(1);
+
+	shiftRegister((unsigned char) 0x01); // Clear Display
+	lcdSend();
+	msleep(16);
+
+	shiftRegister((unsigned char) 0x0c); // Entry Mode Set
+	lcdSend();
+	msleep(1);
+
+	shiftRegister((unsigned char) 0x0f); // Display on w/ cursor & blink on
+	lcdSend();
+	msleep(1);
+}
 void lcdSend() {
 	gpio_direction_output(26, 1);	// flip enable high
 	msleep(5);

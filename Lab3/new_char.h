@@ -45,6 +45,7 @@ static ssize_t device_write(struct file*, const char*, size_t, loff_t*);
 
 void shiftRegister(char num);
 void lcdSend(void);
+void initialize(void);
 
 /* operations usable by this file. */
 static struct file_operations fops = {
