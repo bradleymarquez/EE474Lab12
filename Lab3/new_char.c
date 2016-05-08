@@ -106,7 +106,7 @@ ssize_t device_read(struct file* filp, char* bufStoreData, size_t bufCount, loff
 ssize_t device_write(struct file* filp, const char* bufSource, size_t bufCount, loff_t* curOffset) {
     char val = *bufSource;
 
-    shiftRegister(val);
+    setBus(val);
 
 	printk(KERN_INFO "new_char: writing to device...\n");
 	return copy_from_user(virtual_device.data, bufSource, bufCount);
@@ -142,8 +142,8 @@ void initialize() {
 }
 
 // Loads data through the shift register and sends the command to the LCD
-void command(char data) {
-	shiftRegister(data); // Display on w/ cursor & blink on
+void command(unsigned char data) {
+	setBus(data); // Display on w/ cursor & blink on
 	lcdSend();
 }
 
@@ -171,7 +171,7 @@ void displayOff() {
 }
 
 // Loads and sends data into and from the shift register
-void shiftRegister(char num) {
+void setBus(char num) {
 	int i = 7;
 	int j = 0;
 	int binary[8];
@@ -210,6 +210,25 @@ void shiftRegister(char num) {
 	gpio_set_value(47, 1);
 	msleep(1);
 	gpio_set_value(47, 0);
+	msleep(1);
+}
+
+// Sets the R/W pointer to the address specified
+void setAddress(unsigned char address) {
+	gpio_direction_output(68, 0);
+	gpio_direction_output(44, 0);
+	address |= 0x80;
+	setBus(address);
+	lcdSend;
+	msleep(1);
+}
+
+// Sets DB7 to DB0 to the given 8 bits
+void writeChar(unsigned char character) {
+	gpio_direction_output(68, 1);
+	gpio_direction_output(44, 0);
+	setBus(character);
+	lcdSend;
 	msleep(1);
 }
 

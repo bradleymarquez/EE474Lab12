@@ -43,11 +43,13 @@ static int device_close(struct inode*, struct file *);
 static ssize_t device_read(struct file*, char*, size_t, loff_t*);
 static ssize_t device_write(struct file*, const char*, size_t, loff_t*);
 
-void shiftRegister(char num);
+void shiftRegister(unsigned char);
 void lcdSend(void);
 void initialize(void);
 void displayOff(void);
 void clearDisplay(void);
+void writeChar(unsigned char);
+void setAddress(unsigned char);
 
 /* operations usable by this file. */
 static struct file_operations fops = {
