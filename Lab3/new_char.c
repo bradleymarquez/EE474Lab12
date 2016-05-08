@@ -34,6 +34,7 @@ static int __init driver_entry(void) {
 		printk(KERN_ALERT "new_char: unable to add cdev to kernerl\n");
 		return ret;
 	}
+	
 	// Initialize SEMAPHORE
 	sema_init(&virtual_device.sem, 1);
 	msleep(10);
@@ -56,51 +57,11 @@ static int __init driver_entry(void) {
 	return 0;
 }
 
-void initialize() {
-	gpio_direction_output(68, 0);
-	gpio_direction_output(44, 0);
-
-	msleep(15);
-	
-	shiftRegister((unsigned char) 0x30); // Function Set #1
-	lcdSend();
-	msleep(5);
-	
-	lcdSend(); // Function Set #2
-	msleep(1);
-
-	lcdSend(); // Function Set #3
-	msleep(1);
-
-	shiftRegister((unsigned char) 0x38); // Function Set #4
-	lcdSend();
-	msleep(1);
-
-	shiftRegister((unsigned char) 0x08); // Display OFF
-	lcdSend();
-	msleep(1);
-
-	shiftRegister((unsigned char) 0x01); // Clear Display
-	lcdSend();
-	msleep(16);
-
-	shiftRegister((unsigned char) 0x0c); // Entry Mode Set
-	lcdSend();
-	msleep(1);
-
-	shiftRegister((unsigned char) 0x0f); // Display on w/ cursor & blink on
-	lcdSend();
-	msleep(1);
-}
-void lcdSend() {
-	gpio_direction_output(26, 1);	// flip enable high
-	msleep(5);
-	gpio_direction_output(26, 0); // sends on falling edge
-}
-
 // called up exit.
 // unregisters the device and all associated gpios with it.
 static void __exit driver_exit(void) {
+	displayOff();
+	clearDisplay();
 	gpio_free(45);
 	gpio_free(47);
 	gpio_free(67);
@@ -151,7 +112,65 @@ ssize_t device_write(struct file* filp, const char* bufSource, size_t bufCount, 
 	return copy_from_user(virtual_device.data, bufSource, bufCount);
 }
 
-// shift register module
+// Initializes the LCD
+void initialize() {
+	gpio_direction_output(68, 0);
+	gpio_direction_output(44, 0);
+
+	msleep(15);
+	
+	command((unsigned char) 0x30); // Function Set #1
+	msleep(5);
+	
+	lcdSend(); // Function Set #2
+	msleep(1);
+
+	lcdSend(); // Function Set #3
+	msleep(1);
+
+	command((unsigned char) 0x38); // Function Set #4
+	msleep(1);
+
+	command((unsigned char) 0x08); // Display OFF
+	msleep(1);
+
+	command((unsigned char) 0x01); // Clear Display
+	msleep(16);
+
+	command((unsigned char) 0x0c); // Entry Mode Set
+	msleep(1);
+}
+
+// Loads data through the shift register and sends the command to the LCD
+void command(char data) {
+	shiftRegister(data); // Display on w/ cursor & blink on
+	lcdSend();
+}
+
+// Flips the enable switch on the LCD to execute the loaded instruction
+void lcdSend() {
+	gpio_direction_output(26, 1);	// flip enable high
+	msleep(1);
+	gpio_direction_output(26, 0); // sends on falling edge
+}
+
+// Clears the LCD
+void clearDisplay(){
+	gpio_direction_output(68, 0);
+	gpio_direction_output(44, 0);
+	command ((unsigned char) 0x01); // Clear Display
+	msleep(1);
+}
+
+// Turns the LCD off
+void displayOff() {
+	gpio_direction_output(68, 0);
+	gpio_direction_output(44, 0);
+	command((unsigned char) 0x08); // Display OFF
+	msleep(1);
+}
+
+// Loads and sends data into and from the shift register
 void shiftRegister(char num) {
 	int i = 7;
 	int j = 0;
@@ -185,6 +204,7 @@ void shiftRegister(char num) {
 
 		i--; //the count
 	}
+	
 	gpio_set_value(47, 0);
 	msleep(1);
 	gpio_set_value(47, 1);
