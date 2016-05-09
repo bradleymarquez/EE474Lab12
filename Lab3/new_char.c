@@ -104,9 +104,9 @@ ssize_t device_read(struct file* filp, char* bufStoreData, size_t bufCount, loff
 // Called when user wants to send info to device
 // Calling a shift register file
 ssize_t device_write(struct file* filp, const char* bufSource, size_t bufCount, loff_t* curOffset) {
-    char val = *bufSource;
-
-    setBus(val);
+    unsigned char val = *bufSource;
+	
+    writeChar(val);
 
 	printk(KERN_INFO "new_char: writing to device...\n");
 	return copy_from_user(virtual_device.data, bufSource, bufCount);
