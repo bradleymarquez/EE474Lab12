@@ -15,6 +15,11 @@
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
+#include <signal.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <sys/types.h>
 
 #define MAX_STRING_LEN 16
 #define WRONG_GUESSES 6
