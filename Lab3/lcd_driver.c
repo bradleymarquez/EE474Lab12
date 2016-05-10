@@ -10,12 +10,19 @@
 #define DATA_ 45
 #define LATCH_ 47
 #define CLOCK_ 67
-#define RS_ 68
-#define RW_ 44
-#define E_ 26
+#define RS0_ 68
+#define RW0_ 44
+#define E0_ 26
+#define RS1_
+#define RW1_
+#define E1_
 
 #define CHAR_PER_LINE 16
 #define NUM_LINES 2
+
+static int[] RSArr = {RS0_, RS1_};
+static int[] RWArr = {RW0_, RW1_};
+static int[] EArr = {E0_, E1_};
 
 /********************* FILE OPERATION FUNCTIONS ***************/
 
@@ -74,19 +81,26 @@ int device_open(struct inode *inode, struct file* filp) {
 	gpio_request(DATA_, "Data");
 	gpio_request(LATCH_, "Latch");
 	gpio_request(CLOCK_, "Clock");
-	gpio_request(RS_, "RS");
-	gpio_request(RW_, "R/W");
-	gpio_request(E_, "E");
+	gpio_request(RS0_, "RS1");
+	gpio_request(RW0_, "R/W1");
+	gpio_request(E0_, "E1");
+	gpio_request(RS1_, "RS2");
+	gpio_request(RW1_, "R/W2");
+	gpio_request(E1_, "E2");
 
 	// Set all pins for output
 	gpio_direction_output(DATA_, 0);
 	gpio_direction_output(LATCH_, 0);
 	gpio_direction_output(CLOCK_, 0);
-	gpio_direction_output(RS_, 0);
-	gpio_direction_output(RW_, 0);
-	gpio_direction_output(E_, 0);
+	gpio_direction_output(RS0_, 0);
+	gpio_direction_output(RW0_, 0);
+	gpio_direction_output(E0_, 0);
+	gpio_direction_output(RS1_, 0);
+	gpio_direction_output(RW1_, 0);
+	gpio_direction_output(E1_, 0);
 	
-	initialize();
+	initialize(0);
+	initialize(1);
 
 	return 0;
 }
@@ -100,9 +114,12 @@ int device_close(struct inode* inode, struct  file *filp) {
 	gpio_free(DATA_);
 	gpio_free(LATCH_);
 	gpio_free(CLOCK_);
-	gpio_free(RS_);
-	gpio_free(RW_);
-	gpio_free(E_);
+	gpio_free(RS0_);
+	gpio_free(RW0_);
+	gpio_free(E0_);
+	gpio_free(RS1_);
+	gpio_free(RW1_);
+	gpio_free(E1_);
 	return 0;
 }
 
@@ -114,72 +131,77 @@ ssize_t device_read(struct file* filp, char* bufStoreData, size_t bufCount, loff
 // Called when user wants to send info to device
 // Calling a shift register file
 ssize_t device_write(struct file* filp, const char* bufSource, size_t bufCount, loff_t* curOffset) {
-	clearDisplay();
-	int firstLine = 0, secondLine = 0;
+	int firstLine, secondLine, valid = 1;
 
 	// Determine how many lines of the diplay will be used
-	if (bufCount > CHAR_PER_LINE * NUM_LINES) {
+	if (bufCount > (CHAR_PER_LINE * NUM_LINES) + 1) {
 		firstLine = CHAR_PER_LINE;
 		secondLine = CHAR_PER_LINE;
 	} else if (bufCount > CHAR_PER_LINE) {
 		firstLine = CHAR_PER_LINE;
 		secondLine = bufCount - CHAR_PER_LINE;
-	} else {
+	} else if (bufCount > 1) {
 		firstLine = bufCount;
 		secondLine = 0;
+	} else {
+		valid = 0;
 	}
 
-	// Write to the first line of display
-	int i = 0;
-	for (i = 0; i < firstLine; i++) {
-		writeChar(bufSource[i]);
-	}
+	if (valid) {
+		int screenSel = (int) (bufSource[0] - '0');
+		clearDisplay(screenSel);
+		// Write to the first line of display
+		int i;
+		for (i = 1; i <= firstLine; i++) {
+			writeChar(bufSource[i], screenSel);
+		}
 
-	// Write to the second line
-	if (bufCount > CHAR_PER_LINE) setAddress((unsigned char) 0x40);
-	for (i = 0; i < secondLine; i++) {
-		writeChar(bufSource[i + CHAR_PER_LINE]);
-	}
+		// Write to the second line
+		if (bufCount > CHAR_PER_LINE) setAddress((unsigned char) 0x40);
+		for (i = 1; i <= secondLine; i++) {
+			writeChar(bufSource[i + CHAR_PER_LINE], screenSel);
+		}
 
+	}
 	return copy_from_user(virtual_device.data, bufSource, bufCount);
 }
 
 // Initializes the LCD with the proper series of commands
-void initialize() {
-	gpio_set_value(RS_, 0);
-	gpio_set_value(RW_, 0);
+void initialize(int screenSel) {
+	gpio_set_value(RSArr[screenSel], 0);
+	gpio_set_value(RWArr[screenSel], 0);
 
 	msleep(15);
 	
-	command((unsigned char) 0x30); // Function Set #1
+	command((unsigned char) 0x30, screenSel); // Function Set #1
 	msleep(5);
 	
-	lcdSend(); // Function Set #2
+	lcdSend(screenSel); // Function Set #2
 	msleep(1);
 
-	lcdSend(); // Function Set #3
+	lcdSend(screenSel); // Function Set #3
 	msleep(1);
 
-	command((unsigned char) 0x38); // Function Set #4
+	command((unsigned char) 0x38, screenSel); // Function Set #4
 	msleep(1);
 
-	command((unsigned char) 0x08); // Display OFF
+	command((unsigned char) 0x08, screenSel); // Display OFF
 	udelay(50);
 
-	command((unsigned char) 0x01); // Clear Display
+	command((unsigned char) 0x01, screenSel); // Clear Display
 	msleep(16);
 
-	command((unsigned char) 0x0c); // Entry Mode Set
+	command((unsigned char) 0x0c, screenSel); // Entry Mode Set
 	udelay(50);
 
-	command((unsigned char) 0x0F); // Entry Mode Set
+	command((unsigned char) 0x0F, screenSel); // Entry Mode Set
 	udelay(50);
 }
 
 // Loads data through the shift register and sends the command to the LCD
-void command(unsigned char data) {
+void command(unsigned char data, int screenSel) {
 	setBus(data); // Display on w/ cursor & blink on
-	lcdSend();
+	lcdSend(EArr[screenSel]);
 }
 
 // Loads and sends data into and from the shift register
@@ -215,45 +237,45 @@ void setBus(unsigned char num) {
 }
 
 // Clears the LCD
-void clearDisplay(){
-	gpio_set_value(RS_, 0);
-	gpio_set_value(RW_, 0);
-	command ((unsigned char) 0x01); // Clear Display
+void clearDisplay(int screenSel){
+	gpio_set_value(RSArr[screenSel], 0);
+	gpio_set_value(RWArr[screenSel], 0);
+	command ((unsigned char) 0x01, screenSel); // Clear Display
 	msleep(16);
 }
 
 // Turns the LCD off
-void displayOff() {
-	gpio_set_value(RS_, 0);
-	gpio_set_value(RW_, 0);
-	command((unsigned char) 0x08); // Display OFF
+void displayOff(int screenSel) {
+	gpio_set_value(RSArr[screenSel], 0);
+	gpio_set_value(RWArr[screenSel], 0);
+	command((unsigned char) 0x08, screenSel); // Display OFF
 	udelay(50);
 }
 
 // Sets the R/W pointer to the address specified
-void setAddress(unsigned char address) {
-	gpio_set_value(RS_, 0);
-	gpio_set_value(RW_, 0);
+void setAddress(unsigned char address, int screenSel) {
+	gpio_set_value(RSArr[screenSel], 0);
+	gpio_set_value(RWArr[screenSel], 0);
 	address |= 0x80;
 	setBus(address);
-	lcdSend();
+	lcdSend(screenSel);
 	udelay(50);
 }
 
 // Sets DB7 to DB0 to the given 8 bits
-void writeChar(unsigned char character) {
-	gpio_set_value(RS_, 1);
-	gpio_set_value(RW_, 0);
+void writeChar(unsigned char character, int screenSel) {
+	gpio_set_value(RSArr[screenSel], 1);
+	gpio_set_value(RWArr[screenSel], 0);
 	setBus(character);
-	lcdSend();
+	lcdSend(screenSel);
 	udelay(50);
 }
 
 // Flips the enable switch on the LCD to execute the loaded instruction
-void lcdSend() {
-	gpio_set_value(E_, 1);	// flip enable high
+void lcdSend(int screenSel) {
+	gpio_set_value(EArr[screenSel], 1);	// flip enable high
 	udelay(50);
-	gpio_set_value(E_, 0); // sends on falling edge
+	gpio_set_value(Earr[screenSel], 0); // sends on falling edge
 }
 
 MODULE_LICENSE("GPL"); // module license: required to use some functionalities.
