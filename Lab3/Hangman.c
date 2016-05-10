@@ -102,7 +102,7 @@ int main() {
 		printf("Wrong Guesses: %s\n", wrongGuesses); // Prints wrong character guesses to the terminal
 		strcpy(write_buf, current);
 		strcat(write_buf, wrongGuesses);
-		
+		write(fd, write_buf, MAX_STRING_LEN * 2);
 		// Warns the user when one more incorrect character guess will cause a loss
 		if(wrong == WRONG_GUESSES - 1) {
 			printf("\nWARNING: One more wrong guess will result in a loss.\n\n");
@@ -188,6 +188,7 @@ int main() {
 		strcat(write_buf, "YOU LOSE!       ");
 	}
 	
+	write(fd, write_buf, MAX_STRING_LEN * 2);
 	printf("\nPress any key to exit.\n");
 	mygetch(); // waits for any user input
 	close(fd);
