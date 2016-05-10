@@ -7,6 +7,16 @@
 #include <linux/gpio.h>
 #include <linux/delay.h>
 
+#define DATA_ 45
+#define LATCH_ 47
+#define CLOCK_ 67
+#define RS_ 68
+#define RW_ 44
+#define E_ 26
+
+#define CHAR_PER_LINE 16
+#define NUM_LINES 2
+
 /********************* FILE OPERATION FUNCTIONS ***************/
 
 // runs on startup
@@ -14,7 +24,7 @@
 // assigns device structure data.
 static int __init driver_entry(void) {
 	// REGISTERIONG OUR DEVICE WITH THE SYSTEM
-	// (1) ALLOCATE DYNAMICALLY TO ASSIGN OUR DEVICE
+	// ALLOCATE DYNAMICALLY TO ASSIGN OUR DEVICE
 	int ret = alloc_chrdev_region(&dev_num, 0, 1, DEVICE_NAME);
 	if (ret < 0) {
 		printk(KERN_ALERT "new_char: Failed to allocate a major number\n");
@@ -23,7 +33,7 @@ static int __init driver_entry(void) {
 	printk(KERN_INFO "new_char: major number is %d\n", MAJOR(dev_num));
 	printk(KERN_INFO "Use mknod /dev/%s c %d 0 for device file\n", DEVICE_NAME, MAJOR(dev_num));
 
-	// (2) CREATE CDEV STRUCTURE, INITIALIZING CDEV
+	// CREATE CDEV STRUCTURE, INITIALIZING CDEV
 	mcdev = cdev_alloc();
 	mcdev->ops = &fops;
 	mcdev->owner = THIS_MODULE;
@@ -39,39 +49,14 @@ static int __init driver_entry(void) {
 	sema_init(&virtual_device.sem, 1);
 	msleep(10);
 	
-	gpio_request(45, "Data");
-	gpio_request(47, "Latch");
-	gpio_request(67, "Clock");
-	gpio_request(68, "RS");
-	gpio_request(44, "R/W");
-	gpio_request(26, "E");
-
-	gpio_direction_output(45, 0);
-	gpio_direction_output(47, 0);
-	gpio_direction_output(67, 0);
-	gpio_direction_output(68, 0);
-	gpio_direction_output(44, 0);
-	gpio_direction_output(26, 0);
-	
-	initialize();
-	printk("Finished initialization\n");
 	return 0;
 }
 
 // called up exit.
 // unregisters the device and all associated gpios with it.
 static void __exit driver_exit(void) {
-	displayOff();
-	clearDisplay();
-	gpio_free(45);
-	gpio_free(47);
-	gpio_free(67);
-	gpio_free(68);
-	gpio_free(44);
-	gpio_free(26);
 	cdev_del(mcdev);
 	unregister_chrdev_region(dev_num, 1);
-	printk(KERN_ALERT "new_char: successfully unloaded\n");
 
 }
 
@@ -84,21 +69,45 @@ int device_open(struct inode *inode, struct file* filp) {
 		printk(KERN_ALERT "new_char: could not lock device during open\n");
 		return -1;
 	}
-	printk(KERN_INFO "new_char: device opened\n");
+
+	// Request access to all the needed GPIO pins
+	gpio_request(DATA_, "Data");
+	gpio_request(LATCH_, "Latch");
+	gpio_request(CLOCK_, "Clock");
+	gpio_request(RS_, "RS");
+	gpio_request(RW_, "R/W");
+	gpio_request(E_, "E");
+
+	// Set all pins for output
+	gpio_direction_output(DATA_, 0);
+	gpio_direction_output(LATCH_, 0);
+	gpio_direction_output(CLOCK_, 0);
+	gpio_direction_output(RS_, 0);
+	gpio_direction_output(RW_, 0);
+	gpio_direction_output(E_, 0);
+	
+	initialize();
+
 	return 0;
 }
 
 // Called upon close
-// closes device and returns access to semaphore.
+// closes device, clear display, free the GPIO pins, and returns access to semaphore.
 int device_close(struct inode* inode, struct  file *filp) {
 	up(&virtual_device.sem);
-	printk(KERN_INFO "new_char, closing device\n");
+	clearDisplay();	
+	displayOff();
+	gpio_free(DATA_);
+	gpio_free(LATCH_);
+	gpio_free(CLOCK_);
+	gpio_free(RS_);
+	gpio_free(RW_);
+	gpio_free(E_);
 	return 0;
 }
 
 // Called when user wants to get info from device file
 ssize_t device_read(struct file* filp, char* bufStoreData, size_t bufCount, loff_t* curOffset) {
-	printk(KERN_INFO "new_char: Reading from device...\n");
 	return copy_to_user(bufStoreData, virtual_device.data, bufCount);
 }
 
@@ -106,34 +115,39 @@ ssize_t device_read(struct file* filp, char* bufStoreData, size_t bufCount, loff
 // Calling a shift register file
 ssize_t device_write(struct file* filp, const char* bufSource, size_t bufCount, loff_t* curOffset) {
 	clearDisplay();
-	int firstLine, secondLine;
-	if (bufCount > 32) {
-		firstLine = 16;
-		secondLine = 16;
-	} else if (bufCount > 16) {
-		firstLine = 16;
-		secondLine = bufCount - 16;
+	int firstLine = 0, secondLine = 0;
+
+	// Determine how many lines of the diplay will be used
+	if (bufCount > CHAR_PER_LINE * NUM_LINES) {
+		firstLine = CHAR_PER_LINE;
+		secondLine = CHAR_PER_LINE;
+	} else if (bufCount > CHAR_PER_LINE) {
+		firstLine = CHAR_PER_LINE;
+		secondLine = bufCount - CHAR_PER_LINE;
 	} else {
 		firstLine = bufCount;
 		secondLine = 0;
 	}
-	int i;
+
+	// Write to the first line of display
+	int i = 0;
 	for (i = 0; i < firstLine; i++) {
 		writeChar(bufSource[i]);
 	}
-	setAddress((unsigned char) 0x40);
+
+	// Write to the second line
+	if (bufCount > CHAR_PER_LINE) setAddress((unsigned char) 0x40);
 	for (i = 0; i < secondLine; i++) {
-		writeChar(bufSource[i + 16]);
+		writeChar(bufSource[i + CHAR_PER_LINE]);
 	}
 
-	printk(KERN_INFO "new_char: writing to device...\n");
 	return copy_from_user(virtual_device.data, bufSource, bufCount);
 }
 
-// Initializes the LCD
+// Initializes the LCD with the proper series of commands
 void initialize() {
-	gpio_direction_output(68, 0);
-	gpio_direction_output(44, 0);
+	gpio_set_value(RS_, 0);
+	gpio_set_value(RW_, 0);
 
 	msleep(15);
 	
@@ -150,16 +164,16 @@ void initialize() {
 	msleep(1);
 
 	command((unsigned char) 0x08); // Display OFF
-	msleep(1);
+	udelay(50);
 
 	command((unsigned char) 0x01); // Clear Display
 	msleep(16);
 
 	command((unsigned char) 0x0c); // Entry Mode Set
-	msleep(1);
+	udelay(50);
 
 	command((unsigned char) 0x0F); // Entry Mode Set
-	msleep(1);
+	udelay(50);
 }
 
 // Loads data through the shift register and sends the command to the LCD
@@ -168,84 +182,78 @@ void command(unsigned char data) {
 	lcdSend();
 }
 
-// Flips the enable switch on the LCD to execute the loaded instruction
-void lcdSend() {
-	gpio_direction_output(26, 1);	// flip enable high
-	msleep(1);
-	gpio_direction_output(26, 0); // sends on falling edge
-}
-
-// Clears the LCD
-void clearDisplay(){
-	gpio_direction_output(68, test0);
-	gpio_direction_output(44, 0);
-	command ((unsigned char) 0x01); // Clear Display
-	msleep(1);
-}
-
-// Turns the LCD off
-void displayOff() {
-	gpio_direction_output(68, 0);
-	gpio_direction_output(44, 0);
-	command((unsigned char) 0x08); // Display OFF
-	msleep(1);
-}
-
 // Loads and sends data into and from the shift register
 void setBus(unsigned char num) {
 	int i = 7;
 	int j = 0;
 	int binary[8];
-    
 	int temporary = num;
 
-	while (j < 8) { // building binary number
+	// Building the binary version of num
+	while (j < 8) {
 		binary[j] = temporary % 2;
 		temporary = temporary >> 1;
 		j++;
 	}
 
-	/*printk("\n\n");
-	for (j = 0; j < 8; j++) {
-		printk("%d", binary[j]);
-	}
-	printk("\n\n");*/
-
+	// Inserting binary value into shift register
 	while (i >= 0) {
-		gpio_set_value(45, binary[i]);	//shifting data bit at each clock transition
+		gpio_set_value(DATA_, binary[i]);  // Set the data line to the next value
 
-		gpio_set_value(67, 1);	// configure the default value of the output pin - clock off		
-		msleep(1);
-
-		gpio_set_value(67, 0);	// clock back on after the data bit is shifted
-
-
-		i--; //the count
+		// Toggle the clock
+		gpio_set_value(CLOCK_, 1);		
+		udelay(10);
+		gpio_set_value(CLOCK_, 0);
+		i--;
 	}
 	
-	gpio_set_value(47, 1);
-	msleep(1);
-	gpio_set_value(47, 0);
+	// Toggle the latch
+	gpio_set_value(LATCH_, 1);
+	udelay(50);
+	gpio_set_value(LATCH_, 0);
 
+}
+
+// Clears the LCD
+void clearDisplay(){
+	gpio_set_value(RS_, 0);
+	gpio_set_value(RW_, 0);
+	command ((unsigned char) 0x01); // Clear Display
+	msleep(16);
+}
+
+// Turns the LCD off
+void displayOff() {
+	gpio_set_value(RS_, 0);
+	gpio_set_value(RW_, 0);
+	command((unsigned char) 0x08); // Display OFF
+	udelay(50);
 }
 
 // Sets the R/W pointer to the address specified
 void setAddress(unsigned char address) {
-	gpio_direction_output(68, 0);
-	gpio_direction_output(44, 0);
+	gpio_set_value(RS_, 0);
+	gpio_set_value(RW_, 0);
 	address |= 0x80;
 	setBus(address);
 	lcdSend();
-	msleep(1);
+	udelay(50);
 }
 
 // Sets DB7 to DB0 to the given 8 bits
 void writeChar(unsigned char character) {
-	gpio_direction_output(68, 1);
-	gpio_direction_output(44, 0);
+	gpio_set_value(RS_, 1);
+	gpio_set_value(RW_, 0);
 	setBus(character);
 	lcdSend();
-	//msleep(1);
+	udelay(50);
+}
+
+// Flips the enable switch on the LCD to execute the loaded instruction
+void lcdSend() {
+	gpio_set_value(E_, 1);	// flip enable high
+	udelay(50);
+	gpio_set_value(E_, 0); // sends on falling edge
 }
 
 MODULE_LICENSE("GPL"); // module license: required to use some functionalities.
