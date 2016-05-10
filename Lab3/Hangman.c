@@ -9,26 +9,27 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
-#include "ledinit.h"
 
 #define MAX_STRING_LEN 16
 #define WRONG_GUESSES 6
-
+#define NEW_CHAR_DIR "/dev/new_char"
+static int fd;
 int mygetch(void);
 void printMan(int);
 void sigHandler(int);
-void writeToPipe(char[], int, int);
 int main() {
 	// Sets up the path to the FIFO in order to interface with the LCD
-	int fd = lcdBoot();
-	printf("after boot%d\n", fd);
+	fd = open(NEW_CHAR_DIR, O_RDWR);
 	signal(SIGINT, sigHandler);
-	if (fd == -1) {
-		printf("Error on lcd boot: %s\n", strerror(errno));
+	if (fd < -1) {
+		printf("File %s cannot be opened\n", NEW_CHAR_DIR);
+		exit(1);
 	}
 	
 	// Prints the instructions for the user to view on the terminal
@@ -89,12 +90,13 @@ int main() {
 		wrongGuesses[i] = ' ';
 	}
 	
+	char write_buf[40];
 	// Continually prompts User Two for characters to guess the word that User One passed
 	while (wrong < WRONG_GUESSES) {
 		printf("Word: %s\n", current); // Prints mystery word representation to the terminal
-		writeToPipe(current, fd, TOP); // Prints mystery word representation to top line of LCD
 		printf("Wrong Guesses: %s\n", wrongGuesses); // Prints wrong character guesses to the terminal
-		writeToPipe(wrongGuesses, fd, BOTTOM); // Prints wrong character guesses to bottom line of LCD
+		strcpy(write_buf, current);
+		strcat(write_buf, wrongGuesses);
 		
 		// Warns the user when one more incorrect character guess will cause a loss
 		if(wrong == WRONG_GUESSES - 1) {
@@ -161,6 +163,7 @@ int main() {
 			printf("\n");
 			printMan(wrong);
 		}
+	}
 		
 		if (win){
 			
@@ -168,21 +171,21 @@ int main() {
 		printf("%s\nYOU WIN!!!\n", current);
 		
 		// display win message on LCD
-		writeToPipe("CONGRATULATIONS!", fd, TOP);
-		writeToPipe("YOU WIN!        ", fd, BOTTOM);
+		strcpy(write_buf, "CONGRATULATIONS!");
+		strcat(write_buf, "YOU WIN!        ");
 	} else {
 		
 		// displays loss message on the terminal
 		printf("%s\nYOU LOSE!!!\n", current);
 		
 		// displays lose message on LCD
-		writeToPipe("SORRY :(        ", fd, TOP);
-		writeToPipe("YOU LOSE!       ", fd, BOTTOM);
+		strcpy(write_buf, "SORRY :(        ");
+		strcat(write_buf, "YOU LOSE!       ");
 	}
 	
 	printf("\nPress any key to exit.\n");
 	mygetch(); // waits for any user input
-	closeLCD(); // Closes and clears the LCD once Hangman game finishes
+	close(fd);
 	return 0;
 }
 
@@ -199,29 +202,6 @@ int mygetch(void) {
   tcsetattr ( STDIN_FILENO, TCSANOW, &oldt );
 
   return ch;
-}
-
-// Writes given send string to the LCD through the FIFO using given path fd
-// The string is printed to either the top or bottom line based on given integer line
-// The line printed to the pipe must be 16 characters (screen size)
-void writeToPipe(char send[], int fd, int line) {
-	  ssize_t bytes, written = 0;
-	  while (written < SCREEN_SIZE) {
-	    bytes = write(fd, send, SCREEN_SIZE - written);
-	    if (bytes == -1) {
-	      if (errno != EINTR) {
-		printf("During write%d\n", fd);
-		printf("Error on write: %s\n", strerror(errno));
-		// clear the pipe
-		return;
-	      }
-	      continue;
-	    }
-	    written += bytes;
-	  } 
-	if (printScreen(fd, line) == -1) {
-		printf("Error on print: %s\n", strerror(errno));
-	}
 }
 
 // Prints scarecrow based on given integer (# of wrong guesses)
@@ -296,8 +276,9 @@ void printMan(int i) {
 // Sets the LCD to its off state if Ctrl+C (signal interrupt) is passed by the user
 void sigHandler(int signo) {
 	if (signo == SIGINT) {
-		closeLCD();
+		close(fd);
 		exit(0);
 	}
 }
+
 	
