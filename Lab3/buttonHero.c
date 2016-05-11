@@ -21,9 +21,10 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <time.h>
+#include <math.h>
 
-#define MAX_STRING_LEN 16
-#define WRONG_GUESSES 6
+#define SCREEN_SIZE 16
+#define WRONG_GUESSES 8 // has to less than or equal to 8
 #define NEW_CHAR_DIR "/dev/lcd_driver"
 static int fd;
 static char *write_buf;
@@ -43,160 +44,90 @@ int main() {
 	}
 	
 	// Prints the instructions for the user to view on the terminal
-	printf("\nHello! Welcome to Hangman!\n\nINSTRUCTIONS: Playing this game requires two users. First, User One will be prompted to");
-	printf(" enter\na word from 1-%d characters. The word inputted may only include characters [a-z, A-Z] and\nnumbers [0-9]. The word", MAX_STRING_LEN);
-	printf(" will terminate on whitespace, and the word used will be the string\nbefore any whitespace input. ");
-	printf("This word will then be displayed on the top line of the LCD,\nrepresented by \"_\" characters. ");
-	printf("User Two will then be expected to input guesses in an attempt\nto guess the word that User One inputted. User Two may input multiple characters but");
-	printf(" the guess\nused will be the first character inputted. User Two is alloted %d wrong character", WRONG_GUESSES);
-	printf(" guesses until\nthey lose the game. Wrong character guesses made will be displayed on the bottom line of the LCD.");
-	printf("\n\nPress any key to continue.\n");
-	mygetch(); // waits for any user input
+	printf("\nHello! Welcome to Button Hero!\n\nINSTRUCTIONS: Playing this game requires one user. Press the corresponding\n");
+	printf("button when it gets to the bottom of the single lined screen. Scores and\nnumber of misses are displayed");
+	printf("on the two-lined LCD screen. The user is allowed %d misses until they lose.\nThe current high score is then displayed", WRONG_GUESSES);
+	printf("to the user and the user is prompted to play again.\n")
 	
-	 // gets input from User One for word to use
-	char word[MAX_STRING_LEN];
-	int ask = 1;
-	while (ask) {
-		printf("\nUSER ONE: Please input your word (Max. %d characters).\n", MAX_STRING_LEN);
-		char temp[16];
-		scanf("%16[0-9a-zA-Z]", temp);
-		int ch;
-		while ((ch=getchar()) != EOF && ch != '\n');
+	int highScore = 0;
+	char cont = ' ';
+	while (cont != 'q' || cont != 'Q') {
+		int misses = 0;
+		int currentScore = 0;
+		
+		printf("\n\nPress any key to continue.\n");
+		mygetch(); // waits for any user input
+
+		char screen[SCREEN_SIZE];
 		int i;
-		for(i = 0; i < strlen(temp); i = i + 1){
-			temp[i] = tolower(temp[i]);
+		for (int i = 0; i < SCREEN_SIZE; i++) {
+			screen[i] = ' ';
 		}
-		if (strlen(temp) > MAX_STRING_LEN || strlen(temp) == 0) {
-			printf("The word has an illegal amount of characters. Please try again.\n");
-		} else {
-			memmove(word, temp, strlen(temp) + 1);
-			ask = 0;
-			printf("%s", word);
-		}
-	}
-	
-	// Shift terminal down 100 lines to hide the chosen word from User Two
-	int i;
-	for (i = 0; i < 100; i = i + 1) {
-		printf("\n");
-	}
-	
-	// Initializes word display line with padded spaces to 16 characters long
-	char current[MAX_STRING_LEN + 1];
-	memmove(current, word, strlen(word) + 1);
-	for (i = 0; i < strlen(word); i = i + 1) {
-		current[i] = '_';
-	}
-	for (i = strlen(word); i < MAX_STRING_LEN; i = i + 1) {
-		current[i] = ' ';
-	}
-	current[MAX_STRING_LEN] = '\0';
-	
-	// Initializes wrong guesse given by user
-	char wrongGuesses[MAX_STRING_LEN + 1];
-	int wrong = 0;
-	int win = 0;
-	for (i = 0; i < MAX_STRING_LEN; i = i + 1) {
-		wrongGuesses[i] = ' ';
-	}
-	wrongGuesses[MAX_STRING_LEN] = '\0';
-	
-	write_buf = (char*) malloc(40 * sizeof(char));
-	// Continually prompts User Two for characters to guess the word that User One passed
-	while (wrong < WRONG_GUESSES) {
-		printf("Word: %s\n", current); // Prints mystery word representation to the terminal
-		printf("Wrong Guesses: %s\n", wrongGuesses); // Prints wrong character guesses to the terminal
-		strcpy(write_buf, current);
-		strcat(write_buf, wrongGuesses);
-		write(fd, write_buf, MAX_STRING_LEN * 2);
-		// Warns the user when one more incorrect character guess will cause a loss
-		if(wrong == WRONG_GUESSES - 1) {
-			printf("\nWARNING: One more wrong guess will result in a loss.\n\n");
-		}
-		
-		// Prompts User two for a character guess
-		printf("USER TWO: Please input a character guess.\n");
-		char inputChar;
-		scanf("\n%c", &inputChar);
-		int ch;
-		while ((ch=getchar()) != EOF && ch != '\n');
-		inputChar = tolower(inputChar);
-		int j;
-		
-		// Checks if User Two has already guessed the character passed
-		int guessed = 0;
-		for (j = 0; j < strlen(wrongGuesses); j = j + 1) {
-			if (wrongGuesses[j] == inputChar) {
-				guessed = 1;
-			}
-		}
-		for (j = 0; j < strlen(current); j = j + 1){
-			if (current[j] == inputChar) {
-				guessed = 1;
-			}
-		}
-		
-		// Checks if the character passed is in the mystery word
-		int found = 0;
-		for (j = 0; j < strlen(word); j = j + 1) {
-			if (word[j] == inputChar) {
-				current[j] = inputChar;
-				found = 1;
-			}
-		}
-		
-		// Uses the character passed to go to the next game state
-		if (!found && !guessed) {
-			printf("\nLetter not found!\n");
-			wrongGuesses[wrong * 2] = inputChar;
-			wrongGuesses[wrong * 2 + 1] = ' ';
-			wrong = wrong + 1;
-		} else if (guessed) {
-			printf("\nYou have already guessed this character.\n");
-		} else {
-			printf("\nLetter found!\n");
-		}
-		
-		// Checks if the User Two has won
-		int foundAll = 1;
-		for (j = 0; j < strlen(current); j = j + 1) {
-			if (current[j] == '_') {
-				foundAll = 0;
-			}
-		}
-		if (foundAll) {
-			win = 1;
-		}
-		
-		if (win) { // goes to win state
-			wrong = WRONG_GUESSES + 1;
-		} else { // continues playing ,displays current scarecrow state
-			printf("\n");
-			printMan(wrong);
-		}
-	}
-		
-		if (win){
+		int noteType;
+		while (misses < WRONG_GUESSES){
+			noteType = rand() % 4;
 			
-		// displays congratulations message on terminal
-		printf("%s\nYOU WIN!!!\n", current);
+			// shifts array to the right
+			for (i = SCREEN_SIZE; i > 0; k--) {
+				screen[i] = screen[i - 1];
+			} 
+
+			// build string for screen
+			if (noteType == 0) {
+				strcat(screen, (char) 0x7F)); // hex for right arrow
+			} else if (noteType == 1) {
+				strcat(screen, (char) 0x7E)); // hex for left arrow
+			} else if (noteType == 2) {
+				strcat(screen, 'v'); // 'v'
+			} else {
+				strcat(screen, '^'); // up arrow '^'
+			}
+			
+			
+			// build string for current score
+			char[17] currScore;
+			sprintf(currScore, "Score: %d", currentScore);
+			for (i = strlen(currScore); i < SCREEN_SIZE; i++) {
+				currScore[i] = ' ';
+			}
+			currScore[SCREEN_SIZE] = '\0'; // needed?
+				
+				
+				
+				
+				
+			// build string for current misses
+			char[17] missMarks;
+			stpcpy(missMarks, "Misses: "); // 8 characters
+			for (i = SCREEN_SIZE - WRONG_GUESSES; i < SCREEN_SIZE; i++) {
+				missMarks[i] = 'X';
+			}
+			misMarks[SCREEN_SIZE] = '\0'; // needed if we concatenate anyway???
+			
+			
+			
+			
+			
+			// write into buffer in chosen format
+			// (concatenate all of them???, 48 characters long)
+			
+			// print onto appropriate LCD screens (32 in first, 16 on second)
+			
+			// take input from user
+			// if right timing && right input, +1 point, else +1 miss
+			
+		}
 		
-		// display win message on LCD
-		strcpy(write_buf, "CONGRATULATIONS!");
-		strcat(write_buf, "YOU WIN!        ");
-	} else {
+		// display lose screen
+		if (currentScore > highScore){
+			highScore = currentScore;
+			printf("YOU GOT A HIGH SCORE OF %d!!!", highScore); // on LCD instead???
+		}
 		
-		// displays loss message on the terminal
-		printf("%s\nYOU LOSE!!!\n", current);
-		
-		// displays lose message on LCD
-		strcpy(write_buf, "SORRY :(        ");
-		strcat(write_buf, "YOU LOSE!       ");
+		printf("\nPress 'q' to quit, or any other key to continue playing.\n");
+		cont = getChar(void);
+		getChar();
 	}
-	
-	write(fd, write_buf, MAX_STRING_LEN * 2);
-	printf("\nPress any key to exit.\n");
-	mygetch(); // waits for any user input
 	close(fd);
 	free(write_buf);
 	return 0;
@@ -215,75 +146,6 @@ int mygetch(void) {
   tcsetattr ( STDIN_FILENO, TCSANOW, &oldt );
 
   return ch;
-}
-
-// Prints scarecrow based on given integer (# of wrong guesses)
-void printMan(int i) {
-	 switch (i) {
-	      case 0 :
-	      printf("  _______\n");
-	      printf("  |/\n");
-	      printf("  |\n");
-	      printf("  |\n");
-	      printf("  |\n");
-	      printf("  |\n");
-	      printf("__|_________\n\n");
-	     break;
-	     case 1:
-	      printf("  _______\n");
-	      printf("  |/   | \n");
-	      printf("  |    O \n");
-	      printf("  |\n");
-	      printf("  |\n");
-	      printf("  |\n");
-	      printf("__|_________\n\n");
-	     break;
-	     case 2:
-	      printf("  _______\n");
-	      printf("  |/   | \n");
-	      printf("  |    O \n");
-	      printf("  |    |\n");
-	      printf("  |    |\n");
-	      printf("  |\n");
-	      printf("__|_________\n\n");
-	     break;
-	     case 3:
-	      printf("  _______\n");
-	      printf("  |/   | \n");
-	      printf("  |    O \n");
-	      printf("  |   \\|\n");
-	      printf("  |    | \n");
-	      printf("  |\n");
-	      printf("__|_________\n\n");
-	     break;
-	     case 4:
-	      printf("  _______\n");
-	      printf("  |/   | \n");
-	      printf("  |    O \n");
-	      printf("  |   \\|/\n");
-	      printf("  |    | \n");
-	      printf("  |\n");
-	      printf("__|_________\n\n");
-	     break;
-	     case 5:
-	      printf("  _______\n");
-	      printf("  |/   | \n");
-	      printf("  |    O \n");
-	      printf("  |   \\|/\n");
-	      printf("  |    | \n");
-	      printf("  |   /\n");
-	      printf("__|_________\n\n");
-	     break;
-	     case 6:
-	      printf("  _______\n");
-	      printf("  |/   | \n");
-	      printf("  |    X \n");
-	      printf("  |   \\|/\n");
-	      printf("  |    | \n");
-	      printf("  |   / \\\n");
-	      printf("__|_________\n\n");
-	     break;
-	 }
 }
 
 // Sets the LCD to its off state if Ctrl+C (signal interrupt) is passed by the user
