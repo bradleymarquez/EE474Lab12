@@ -25,6 +25,7 @@
 
 #define SCREEN_SIZE 16
 #define WRONG_GUESSES 8 // has to be less than or equal to 8
+#define DELAY_TIME 250000 // 1/4 sec
 #define NEW_CHAR_DIR "/dev/lcd_driver"
 
 static int fd;
@@ -34,7 +35,6 @@ int mygetch(void);
 void sigHandler(int);
 int main() {
 	srand(time(NULL));
-	// int r = rand();    //returns a pseudo-random integer between 0 and RAND_MAX
 	
 	// Sets up the path to the FIFO in order to interface with the LCD
 	fd = open(NEW_CHAR_DIR, O_RDWR);
@@ -122,6 +122,7 @@ int main() {
 			// print onto appropriate LCD screens (32 in first, 16 on second)
 			write(fd, write_buf, SCREEN_SIZE * 3);
 			// take input from user
+			usleep(DELAY_TIME);
 			// if right timing && right input, +1 point, else +1 miss
 			// input = button press from GPIO
 			/*if (input == screen[0]) {
@@ -136,12 +137,12 @@ int main() {
 		// display lose screen
 		if (currentScore > highScore){
 			highScore = currentScore;
-			printf("YOU GOT A HIGH SCORE OF %d!!!", highScore); // on LCD instead???
+			printf("YOU GOT A HIGH SCORE OF %d!!!\n", highScore); // on LCD instead???
 		}
 		
 		printf("\nPress 'q' to quit, or any other key to continue playing.\n");
 		cont = getchar();
-		getchar();
+		getchar(); // gets rid of hanging \n
 	}
 	close(fd);
 	free(write_buf);
