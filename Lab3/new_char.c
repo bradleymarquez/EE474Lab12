@@ -13,6 +13,7 @@
 #define RS_ 68
 #define RW_ 44
 #define E_ 26
+#define E2_ 46
 
 #define CHAR_PER_LINE 16
 #define NUM_LINES 2
@@ -77,6 +78,7 @@ int device_open(struct inode *inode, struct file* filp) {
 	gpio_request(RS_, "RS");
 	gpio_request(RW_, "R/W");
 	gpio_request(E_, "E");
+	gpio_request(E2_, "E2");
 
 	// Set all pins for output
 	gpio_direction_output(DATA_, 0);
@@ -85,8 +87,10 @@ int device_open(struct inode *inode, struct file* filp) {
 	gpio_direction_output(RS_, 0);
 	gpio_direction_output(RW_, 0);
 	gpio_direction_output(E_, 0);
+	gpio_direction_output(E2_, 0);
 	
-	initialize();
+	initialize1();
+	initialize2();
 
 	return 0;
 }
@@ -95,14 +99,17 @@ int device_open(struct inode *inode, struct file* filp) {
 // closes device, clear display, free the GPIO pins, and returns access to semaphore.
 int device_close(struct inode* inode, struct  file *filp) {
 	up(&virtual_device.sem);
-	clearDisplay();	
-	displayOff();
+	clearDisplay1();	
+	displayOff1();
+	clearDisplay2();	
+	displayOff2();
 	gpio_free(DATA_);
 	gpio_free(LATCH_);
 	gpio_free(CLOCK_);
 	gpio_free(RS_);
 	gpio_free(RW_);
 	gpio_free(E_);
+	gpio_free(E2_);
 	return 0;
 }
 
@@ -144,42 +151,80 @@ ssize_t device_write(struct file* filp, const char* bufSource, size_t bufCount, 
 	return copy_from_user(virtual_device.data, bufSource, bufCount);
 }
 
-// Initializes the LCD with the proper series of commands
-void initialize() {
+// Initializes the LCD with two lines
+void initialize2() {
 	gpio_set_value(RS_, 0);
 	gpio_set_value(RW_, 0);
 
 	msleep(15);
 	
-	command((unsigned char) 0x30); // Function Set #1
+	command2((unsigned char) 0x30); // Function Set #1
 	msleep(5);
 	
-	lcdSend(); // Function Set #2
+	lcdSend2(); // Function Set #2
 	msleep(1);
 
-	lcdSend(); // Function Set #3
+	lcdSend2(); // Function Set #3
 	msleep(1);
 
-	command((unsigned char) 0x38); // Function Set #4
+	command2((unsigned char) 0x38); // Function Set #4
 	msleep(1);
 
-	command((unsigned char) 0x08); // Display OFF
+	command2((unsigned char) 0x08); // Display OFF
 	udelay(50);
 
-	command((unsigned char) 0x01); // Clear Display
+	command2((unsigned char) 0x01); // Clear Display
+	msleep(16);
+	
+	command2((unsigned char) 0x06); // Entry Mode Set
+	udelay(50);
+	
+	command2((unsigned char) 0x0c); // Display ON
+	udelay(50);
+}
+
+// Initializes the LCD with one line
+void initialize1() {
+	gpio_set_value(RS_, 0);
+	gpio_set_value(RW_, 0);
+
+	msleep(15);
+	
+	command1((unsigned char) 0x30); // Function Set #1
+	msleep(5);
+	
+	lcdSend1(); // Function Set #2
+	msleep(1);
+
+	lcdSend1(); // Function Set #3
+	msleep(1);
+
+	command1((unsigned char) 0x34); // Function Set #4
+	msleep(1);
+
+	command1((unsigned char) 0x08); // Display OFF
+	udelay(50);
+
+	command1((unsigned char) 0x01); // Clear Display
 	msleep(16);
 
-	command((unsigned char) 0x0c); // Entry Mode Set
+	command1((unsigned char) 0x05); // Entry Mode Set
 	udelay(50);
 
-	command((unsigned char) 0x0F); // Entry Mode Set
+	command1((unsigned char) 0x0c); // Display ON
 	udelay(50);
 }
 
 // Loads data through the shift register and sends the command to the LCD
-void command(unsigned char data) {
+void command1(unsigned char data) {
 	setBus(data); // Display on w/ cursor & blink on
-	lcdSend();
+	lcdSend1();
+}
+
+// Loads data through the shift register and sends the command to the LCD
+void command2(unsigned char data) {
+	setBus(data); // Display on w/ cursor & blink on
+	lcdSend2();
 }
 
 // Loads and sends data into and from the shift register
@@ -215,42 +260,84 @@ void setBus(unsigned char num) {
 }
 
 // Clears the LCD
-void clearDisplay(){
+void clearDisplay1(){
 	gpio_set_value(RS_, 0);
 	gpio_set_value(RW_, 0);
-	command ((unsigned char) 0x01); // Clear Display
+	command1 ((unsigned char) 0x01); // Clear Display
+	msleep(16);
+}
+
+// Clears the LCD
+void clearDisplay2(){
+	gpio_set_value(RS_, 0);
+	gpio_set_value(RW_, 0);
+	command2 ((unsigned char) 0x01); // Clear Display
 	msleep(16);
 }
 
 // Turns the LCD off
-void displayOff() {
+void displayOff1() {
 	gpio_set_value(RS_, 0);
 	gpio_set_value(RW_, 0);
-	command((unsigned char) 0x08); // Display OFF
+	command1 ((unsigned char) 0x08); // Display OFF
+	udelay(50);
+}
+
+// Turns the LCD off
+void displayOff2() {
+	gpio_set_value(RS_, 0);
+	gpio_set_value(RW_, 0);
+	command2 ((unsigned char) 0x08); // Display OFF
 	udelay(50);
 }
 
 // Sets the R/W pointer to the address specified
-void setAddress(unsigned char address) {
+void setAddress1(unsigned char address) {
 	gpio_set_value(RS_, 0);
 	gpio_set_value(RW_, 0);
 	address |= 0x80;
 	setBus(address);
-	lcdSend();
+	lcdSend1();
+	udelay(50);
+}
+
+// Sets the R/W pointer to the address specified
+void setAddress2(unsigned char address) {
+	gpio_set_value(RS_, 0);
+	gpio_set_value(RW_, 0);
+	address |= 0x80;
+	setBus(address);
+	lcdSend2();
 	udelay(50);
 }
 
 // Sets DB7 to DB0 to the given 8 bits
-void writeChar(unsigned char character) {
+void writeChar1(unsigned char character) {
 	gpio_set_value(RS_, 1);
 	gpio_set_value(RW_, 0);
 	setBus(character);
-	lcdSend();
+	lcdSend2();
 	udelay(50);
 }
 
-// Flips the enable switch on the LCD to execute the loaded instruction
-void lcdSend() {
+// Sets DB7 to DB0 to the given 8 bits
+void writeChar2(unsigned char character) {
+	gpio_set_value(RS_, 1);
+	gpio_set_value(RW_, 0);
+	setBus(character);
+	lcdSend2();
+	udelay(50);
+}
+
+// Flips the enable switch on the 1-line LCD to execute the loaded instruction
+void lcdSend1() {
+	gpio_set_value(E2_, 1);	// flip enable high
+	udelay(50);
+	gpio_set_value(E2_, 0); // sends on falling edge
+}
+
+// Flips the enable switch on the 2-line LCD to execute the loaded instruction
+void lcdSend2() {
 	gpio_set_value(E_, 1);	// flip enable high
 	udelay(50);
 	gpio_set_value(E_, 0); // sends on falling edge

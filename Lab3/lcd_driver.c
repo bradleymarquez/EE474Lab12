@@ -109,8 +109,10 @@ int device_open(struct inode *inode, struct file* filp) {
 // closes device, clear display, free the GPIO pins, and returns access to semaphore.
 int device_close(struct inode* inode, struct  file *filp) {
 	up(&virtual_device.sem);
-	clearDisplay();	
-	displayOff();
+	clearDisplay(0);	
+	displayOff(0);
+	clearDisplay(1);	
+	displayOff(1);
 	gpio_free(DATA_);
 	gpio_free(LATCH_);
 	gpio_free(CLOCK_);
@@ -181,8 +183,12 @@ void initialize(int screenSel) {
 
 	lcdSend(screenSel); // Function Set #3
 	msleep(1);
-
-	command((unsigned char) 0x38, screenSel); // Function Set #4
+	
+	if (screenSel) { // Function Set #4
+		command((unsigned char) 0x38, screenSel); // 5x7 font, 2 lines
+	} else {
+		command((unsigned char) 0x34, screenSel); // 5x10 font, 1 line
+	}
 	msleep(1);
 
 	command((unsigned char) 0x08, screenSel); // Display OFF
@@ -190,17 +196,25 @@ void initialize(int screenSel) {
 
 	command((unsigned char) 0x01, screenSel); // Clear Display
 	msleep(16);
-
-	command((unsigned char) 0x0c, screenSel); // Entry Mode Set
+	
+	if (screenSel) { // Entry Mode Set
+		command((unsigned char) 0x06, screenSel); // Increment mode
+	} else {
+		command((unsigned char) 0x05, screenSel); // Decrement mode
+	}
 	udelay(50);
-
-	command((unsigned char) 0x0F, screenSel); // Entry Mode Set
+	
+	if (screenSel) { // Entry Mode Set
+		command((unsigned char) 0x0C, screenSel); // Cursor OFF, Blink OFF
+	} else {
+		command((unsigned char) 0x0F, screenSel); // Cursor ON, Blink On
+	}
 	udelay(50);
 }
 
 // Loads data through the shift register and sends the command to the LCD
 void command(unsigned char data, int screenSel) {
-	setBus(data); // Display on w/ cursor & blink on
+	setBus(data);
 	lcdSend(EArr[screenSel]);
 }
 
