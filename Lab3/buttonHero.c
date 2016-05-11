@@ -46,11 +46,12 @@ int main() {
 	
 	// Prints the instructions for the user to view on the terminal
 	printf("\nHello! Welcome to Button Hero!\n\nINSTRUCTIONS: Playing this game requires one user. Press the corresponding\n");
-	printf("button when it gets to the bottom of the single lined screen. Scores and\nnumber of misses are displayed");
-	printf("on the two-lined LCD screen. The user is allowed %d misses until they lose.\nThe current high score is then displayed", WRONG_GUESSES);
-	printf("to the user and the user is prompted to play again.\n")
+	printf("button when it gets to the bottom of the single lined screen. Current score and\nnumber of misses are displayed");
+	printf("on the two-lined LCD screen. A miss is either a wrong or a missed input.\nThe user is allowed %d misses", WRONG_GUESSES);
+	printf("until they lose.\nThe current high score is then displayed to the user and the user is prompted to play again.\n")
 	
 	int highScore = 0;
+	int rightInput = 1;
 	char cont = ' ';
 	while (cont != 'q' || cont != 'Q') {
 		int misses = 0;
@@ -58,7 +59,13 @@ int main() {
 		
 		printf("\n\nPress any key to continue.\n");
 		mygetch(); // waits for any user input
-
+		
+		// checks if user missed a note
+		if (!rightInput) {
+			misses++;
+		}
+		rightInput = 0;
+		
 		char screen[SCREEN_SIZE];
 		int i;
 		for (int i = 0; i < SCREEN_SIZE; i++) {
@@ -79,19 +86,19 @@ int main() {
 			} else if (noteType == 1) {
 				strcat(screen, (char) 0x7E)); // hex for left arrow
 			} else if (noteType == 2) {
-				strcat(screen, 'v'); // 'v'
+				strcat(screen, 'v'); // down arrow 'v'
 			} else {
 				strcat(screen, '^'); // up arrow '^'
 			}
 			
 			
 			// build string for current score
-			char[17] currScore;
-			sprintf(currScore, "Score: %d", currentScore);
-			for (i = strlen(currScore); i < SCREEN_SIZE; i++) {
-				currScore[i] = ' ';
+			char[17] scoreString;
+			sprintf(scoreString, "Score: %d", currentScore);
+			for (i = strlen(scoreString); i < SCREEN_SIZE; i++) {
+				scoreString[i] = ' ';
 			}
-			currScore[SCREEN_SIZE] = '\0'; // needed?
+			scoreString[SCREEN_SIZE] = '\0'; // needed?
 				
 				
 				
@@ -113,10 +120,17 @@ int main() {
 			// (concatenate all of them???, 48 characters long)
 			
 			// print onto appropriate LCD screens (32 in first, 16 on second)
-			
+			write(fd, write_buf, SCREEN_SIZE * 3)
 			// take input from user
 			// if right timing && right input, +1 point, else +1 miss
-			
+			// input = button press from GPIO
+			/*if (input == screen[0]) {
+				rightInput = 1;
+				currentScore++;
+			} else {
+				misses++;
+			}
+			*/
 		}
 		
 		// display lose screen
