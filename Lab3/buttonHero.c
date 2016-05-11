@@ -1,10 +1,10 @@
-/*	Hangman.c
+/* buttonHero.c
  * Brad Marquez, Joseph Rothlin, Aigerim Shintemirova
- * 22 / April / 2016
+ * 11 / May / 2016
  *
- *	Hangman game implemented on C. Two users interface with the terminal and the current game state is shown on the LCD.
- * 	Plays one game of hangman. User One inputs a word and User Two will guess characters until they guess too many wrong
- * 	characters or they guess all of the characters right. 
+ *	
+ *
+ *	
  *	
  */
 
@@ -24,8 +24,9 @@
 #include <math.h>
 
 #define SCREEN_SIZE 16
-#define WRONG_GUESSES 8 // has to less than or equal to 8
+#define WRONG_GUESSES 8 // has to be less than or equal to 8
 #define NEW_CHAR_DIR "/dev/lcd_driver"
+
 static int fd;
 static char *write_buf;
 int mygetch(void);
