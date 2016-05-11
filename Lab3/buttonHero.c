@@ -29,8 +29,8 @@
 
 static int fd;
 static char *write_buf;
+
 int mygetch(void);
-void printMan(int);
 void sigHandler(int);
 int main() {
 	srand(time(NULL));
@@ -48,7 +48,7 @@ int main() {
 	printf("\nHello! Welcome to Button Hero!\n\nINSTRUCTIONS: Playing this game requires one user. Press the corresponding\n");
 	printf("button when it gets to the bottom of the single lined screen. Current score and\nnumber of misses are displayed");
 	printf("on the two-lined LCD screen. A miss is either a wrong or a missed input.\nThe user is allowed %d misses", WRONG_GUESSES);
-	printf("until they lose.\nThe current high score is then displayed to the user and the user is prompted to play again.\n")
+	printf("until they lose.\nThe current high score is then displayed to the user and the user is prompted to play again.\n");
 	
 	int highScore = 0;
 	int rightInput = 1;
@@ -76,24 +76,24 @@ int main() {
 			noteType = rand() % 4;
 			
 			// shifts array to the right
-			for (i = SCREEN_SIZE; i > 0; k--) {
+			for (i = SCREEN_SIZE; i > 0; i--) {
 				screen[i] = screen[i - 1];
 			} 
 
 			// build string for screen
 			if (noteType == 0) {
-				strcat(screen, (char) 0x7F)); // hex for right arrow
+				strcat(screen, ">"); // right arrow ">"
 			} else if (noteType == 1) {
-				strcat(screen, (char) 0x7E)); // hex for left arrow
+				strcat(screen, "<"); // left arrow "<"
 			} else if (noteType == 2) {
-				strcat(screen, 'v'); // down arrow 'v'
+				strcat(screen, "v"); // down arrow "v"
 			} else {
-				strcat(screen, '^'); // up arrow '^'
+				strcat(screen, "^"); // up arrow "^"
 			}
 			
 			
 			// build string for current score
-			char[17] scoreString;
+			char scoreString[17];
 			sprintf(scoreString, "Score: %d", currentScore);
 			for (i = strlen(scoreString); i < SCREEN_SIZE; i++) {
 				scoreString[i] = ' ';
@@ -105,12 +105,12 @@ int main() {
 				
 				
 			// build string for current misses
-			char[17] missMarks;
-			stpcpy(missMarks, "Misses: "); // 8 characters
+			char missMarks[17];
+			strcpy(missMarks, "Misses: "); // 8 characters
 			for (i = SCREEN_SIZE - WRONG_GUESSES; i < SCREEN_SIZE; i++) {
 				missMarks[i] = 'X';
 			}
-			misMarks[SCREEN_SIZE] = '\0'; // needed if we concatenate anyway???
+			missMarks[SCREEN_SIZE] = '\0'; // needed if we concatenate anyway???
 			
 			
 			
@@ -120,7 +120,7 @@ int main() {
 			// (concatenate all of them???, 48 characters long)
 			
 			// print onto appropriate LCD screens (32 in first, 16 on second)
-			write(fd, write_buf, SCREEN_SIZE * 3)
+			write(fd, write_buf, SCREEN_SIZE * 3);
 			// take input from user
 			// if right timing && right input, +1 point, else +1 miss
 			// input = button press from GPIO
@@ -140,8 +140,8 @@ int main() {
 		}
 		
 		printf("\nPress 'q' to quit, or any other key to continue playing.\n");
-		cont = getChar(void);
-		getChar();
+		cont = getchar();
+		getchar();
 	}
 	close(fd);
 	free(write_buf);
