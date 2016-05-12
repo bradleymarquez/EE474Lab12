@@ -10,18 +10,13 @@
 #define DATA_ 45
 #define LATCH_ 47
 #define CLOCK_ 67
-#define RS0_ 68
-#define RW0_ 44
+#define RS_ 68
+#define RW_ 44
 #define E0_ 26
-#define RS1_
-#define RW1_
 #define E1_
-
 #define CHAR_PER_LINE 16
 #define NUM_LINES 2
 
-static int[] RSArr = {RS0_, RS1_};
-static int[] RWArr = {RW0_, RW1_};
 static int[] EArr = {E0_, E1_};
 
 /********************* FILE OPERATION FUNCTIONS ***************/
@@ -30,7 +25,7 @@ static int[] EArr = {E0_, E1_};
 // intializes module space and declares major number.
 // assigns device structure data.
 static int __init driver_entry(void) {
-	// REGISTERIONG OUR DEVICE WITH THE SYSTEM
+	// REGISTERING OUR DEVICE WITH THE SYSTEM
 	// ALLOCATE DYNAMICALLY TO ASSIGN OUR DEVICE
 	int ret = alloc_chrdev_region(&dev_num, 0, 1, DEVICE_NAME);
 	if (ret < 0) {
@@ -81,22 +76,18 @@ int device_open(struct inode *inode, struct file* filp) {
 	gpio_request(DATA_, "Data");
 	gpio_request(LATCH_, "Latch");
 	gpio_request(CLOCK_, "Clock");
-	gpio_request(RS0_, "RS1");
-	gpio_request(RW0_, "R/W1");
-	gpio_request(E0_, "E1");
-	gpio_request(RS1_, "RS2");
-	gpio_request(RW1_, "R/W2");
-	gpio_request(E1_, "E2");
+	gpio_request(RS_, "RS");
+	gpio_request(RW_, "R/W");
+	gpio_request(E0_, "E0");
+	gpio_request(E1_, "E1");
 
 	// Set all pins for output
 	gpio_direction_output(DATA_, 0);
 	gpio_direction_output(LATCH_, 0);
 	gpio_direction_output(CLOCK_, 0);
-	gpio_direction_output(RS0_, 0);
-	gpio_direction_output(RW0_, 0);
+	gpio_direction_output(RS_, 0);
+	gpio_direction_output(RW_, 0);
 	gpio_direction_output(E0_, 0);
-	gpio_direction_output(RS1_, 0);
-	gpio_direction_output(RW1_, 0);
 	gpio_direction_output(E1_, 0);
 	
 	initialize(0);
@@ -116,11 +107,9 @@ int device_close(struct inode* inode, struct  file *filp) {
 	gpio_free(DATA_);
 	gpio_free(LATCH_);
 	gpio_free(CLOCK_);
-	gpio_free(RS0_);
-	gpio_free(RW0_);
+	gpio_free(RS_);
+	gpio_free(RW_);
 	gpio_free(E0_);
-	gpio_free(RS1_);
-	gpio_free(RW1_);
 	gpio_free(E1_);
 	return 0;
 }
@@ -170,8 +159,8 @@ ssize_t device_write(struct file* filp, const char* bufSource, size_t bufCount, 
 
 // Initializes the LCD with the proper series of commands
 void initialize(int screenSel) {
-	gpio_set_value(RSArr[screenSel], 0);
-	gpio_set_value(RWArr[screenSel], 0);
+	gpio_set_value(RS_, 0);
+	gpio_set_value(RW_, 0);
 
 	msleep(15);
 	
@@ -252,24 +241,24 @@ void setBus(unsigned char num) {
 
 // Clears the LCD
 void clearDisplay(int screenSel){
-	gpio_set_value(RSArr[screenSel], 0);
-	gpio_set_value(RWArr[screenSel], 0);
+	gpio_set_value(RS_, 0);
+	gpio_set_value(RW_, 0);
 	command ((unsigned char) 0x01, screenSel); // Clear Display
 	msleep(16);
 }
 
 // Turns the LCD off
 void displayOff(int screenSel) {
-	gpio_set_value(RSArr[screenSel], 0);
-	gpio_set_value(RWArr[screenSel], 0);
+	gpio_set_value(RS_, 0);
+	gpio_set_value(RW_, 0);
 	command((unsigned char) 0x08, screenSel); // Display OFF
 	udelay(50);
 }
 
 // Sets the R/W pointer to the address specified
 void setAddress(unsigned char address, int screenSel) {
-	gpio_set_value(RSArr[screenSel], 0);
-	gpio_set_value(RWArr[screenSel], 0);
+	gpio_set_value(RS_, 0);
+	gpio_set_value(RW_, 0);
 	address |= 0x80;
 	setBus(address);
 	lcdSend(screenSel);
@@ -278,8 +267,8 @@ void setAddress(unsigned char address, int screenSel) {
 
 // Sets DB7 to DB0 to the given 8 bits
 void writeChar(unsigned char character, int screenSel) {
-	gpio_set_value(RSArr[screenSel], 1);
-	gpio_set_value(RWArr[screenSel], 0);
+	gpio_set_value(RS_, 1);
+	gpio_set_value(RW_, 0);
 	setBus(character);
 	lcdSend(screenSel);
 	udelay(50);
