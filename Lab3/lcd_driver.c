@@ -20,7 +20,7 @@
 
 //static int[] RSArr = RS0_;
 //static int[] RWArr = RW0_;
-static int[] EArr = {E0_, E1_};
+static int EArr[2] = {E0_, E1_};
 
 /********************* FILE OPERATION FUNCTIONS ***************/
 
@@ -132,7 +132,7 @@ ssize_t device_read(struct file* filp, char* bufStoreData, size_t bufCount, loff
 // Calling a shift register file
 ssize_t device_write(struct file* filp, const char* bufSource, size_t bufCount, loff_t* curOffset) {
 	int firstLine, secondLine, thirdLine, valid = 1;
-
+	int i;
 	// Determine how many lines of the display will be used
 	if (bufCount > (CHAR_PER_LINE * NUM_LINES) + 1) {
 		firstLine = CHAR_PER_LINE;
@@ -153,13 +153,12 @@ ssize_t device_write(struct file* filp, const char* bufSource, size_t bufCount, 
 		int screenSel = (int) (bufSource[0] - '0');
 		clearDisplay(screenSel);
 		// Write to the first line of display
-		int i;
 		for (i = 1; i <= firstLine; i++) {
 			writeChar(bufSource[i], screenSel);
 		}
 
 		// Write to the second line
-		if (bufCount > CHAR_PER_LINE) setAddress((unsigned char) 0x40);
+		if (bufCount > CHAR_PER_LINE) setAddress((unsigned char) 0x40, 0);
 		for (i = 1; i <= secondLine; i++) {
 			writeChar(bufSource[i + CHAR_PER_LINE], screenSel);
 		}
@@ -293,7 +292,7 @@ void writeChar(unsigned char character, int screenSel) {
 void lcdSend(int screenSel) {
 	gpio_set_value(EArr[screenSel], 1);	// flip enable high
 	udelay(50);
-	gpio_set_value(Earr[screenSel], 0); // sends on falling edge
+	gpio_set_value(EArr[screenSel], 0); // sends on falling edge
 }
 
 MODULE_LICENSE("GPL"); // module license: required to use some functionalities.
