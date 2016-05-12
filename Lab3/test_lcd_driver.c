@@ -18,23 +18,27 @@ int main(void)
 		exit(1);
 	}
 	strcpy(write_buf, "Hello this is a test for the LCD");
+	printf("Write 1\n");
 	write(fd, write_buf, 32);
 	usleep(3000000);
 
 	strcpy(write_buf, "Hello this is a test for the LCD blah");
+	printf("Write 2\n");
 	write(fd, write_buf, 37);
 	usleep(3000000);
 
 	strcpy(write_buf, "Hello");
+	printf("Write 3\n");
 	write(fd, write_buf, 5);
 	usleep(3000000);
 
 	strcpy(write_buf, "");
+	printf("Write 4\n");
 	write(fd, write_buf, 0);
 	usleep(3000000);
 
-	strcpy(write_buf, "testtesttesttesttesttesttesttesttesttesttesttest");
-	printf("Pre-write\n");
+	strcpy(write_buf, "<<<<<<<<<<<<<<<<vvvvvvvvvvvvvvvvvv>>>>>>>>>>>^^^^^");
+	printf("Pre-write 5\n");
 	write(fd, write_buf, 48);
 	printf("Post-write\n");
 	usleep(3000000);

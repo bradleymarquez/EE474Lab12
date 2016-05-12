@@ -7,11 +7,11 @@
 #include <linux/gpio.h>
 #include <linux/delay.h>
 
-#define UP
-#define DOWN
-#define LEFT
-#define RIGHT
-#define PRESS
+#define UP 100
+#define DOWN 101
+#define LEFT 102
+#define RIGHT 103
+#define PRESS 104
 
 /********************* FILE OPERATION FUNCTIONS ***************/
 
@@ -109,6 +109,6 @@ ssize_t device_read(struct file* filp, char* bufStoreData, size_t bufCount, loff
 // Called when user wants to send info to device
 // Calling a shift register file
 ssize_t device_write(struct file* filp, const char* bufSource, size_t bufCount, loff_t* curOffset) {
-	return copy_from_user(virtual_device.data, bufSource, bufCount);
+	return copy_from_user(virtual_device.status, bufSource, bufCount);
 }
 
