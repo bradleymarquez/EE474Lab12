@@ -46,6 +46,7 @@ int printLose(int, int);
 void openPath(void);
 void instructions(void);
 void playGame(void);
+void buzzer(int);
 int main() {
 	signal(SIGINT, sigHandler);
 	openPath();
@@ -161,6 +162,9 @@ void playGame(){
 				strcat(total, missMarks); // last 16 chars: misses
 			
 				for (i = 0; i < strlen(total); i++) {
+					if (i % 16 == 0) {
+						printf("\n");
+					}
 					printf("%c",total[i]);
 				}
 				printf("\n");
@@ -184,17 +188,23 @@ void playGame(){
 				// update inputted
 				char note;
 				if (index == 0) {
-					note =  '^'; // up arrow 
+					note =  '^'; // up arrow
+					buzzer(2272727);
 				} else if (index == 1) {
 					note =  'v'; // down arrow 
+					buzzer(2145186);
 				} else if (index == 2) {
 					note =  '<'; // left arrow 
+					buzzer(1912046);
 				} else if (index == 3) {
 					note =  '>'; // right arrow 
+					buzzer(1702620);
 				} else if (index == 4) {
 					note = 'o'; // press button
+					buzzer(1517451);
 				} else {
 					note =  ' '; // space = no input
+					buzzer(0);
 				}
 				// if right timing && right input, +1 point, else +1 miss
 				// input = button press from GPIO
@@ -225,6 +235,35 @@ void playGame(){
 		quit = wantToQuit();
 		usleep(500000);
 	}
+}
+
+// Plays given sound on the piezobuzzer
+void buzzer(int note) {
+	FILE *sys2, *dirduty, *dirT;
+
+	sys2 = fopen("/sys/devices/bone_capemgr.9/slots", "w");
+	fseek(sys2, 0, SEEK_END);
+
+	fprintf(sys2, "am33xx_pwm");
+	fflush(sys2);
+
+	fprintf(sys2, "bone_pwm_P9_14");
+	fflush(sys2);
+
+	// Sets the pointers to the appropriate duty and period files
+	dirduty = fopen("/sys/devices/ocp.3/pwm_test_P9_14.15/duty", "w");
+	dirT = fopen("/sys/devices/ocp.3/pwm_test_P9_14.15/period", "w");
+	
+
+	fprintf(dirduty, "%d", note / 2);
+	fflush(dirduty);
+
+	fprintf(dirT, "%d", note);
+	fflush(dirT);
+	
+	fclose(sys2);
+	fclose(dirduty);
+	fclose(dirT);
 }
 
 // Sets up the path to the FIFO in order to interface with the LCD
@@ -288,9 +327,9 @@ void sigHandler(int signo) {
 // Prints the instructions for the user to view on the terminal
 void instructions(){
 	printf("\nHello! Welcome to Button Hero!\n\nINSTRUCTIONS: Playing this game requires one user. Press the corresponding\n");
-	printf("button when it gets to the bottom of the single lined screen. Current score and\nnumber of misses are displayed");
-	printf("on the two-lined LCD screen. A miss is either a wrong or a missed input.\nThe user is allowed %d misses", WRONG_GUESSES);
-	printf("until they lose.\nThe current high score is then displayed to the user and the user is prompted to play again.\n");
+	printf("button when it gets to the far left of the single lined screen. Current score\nand the number of misses are displayed ");
+	printf("on the two-lined LCD screen. A miss is\ngiven on a wrong input or when the user misses an input. The user is allowed %d\nmisses", WRONG_GUESSES);
+	printf(" until they lose. The current high score is then displayed to the user\nand the user is prompted to play again.\n");
 }
 
 void pressAnyButton() {
