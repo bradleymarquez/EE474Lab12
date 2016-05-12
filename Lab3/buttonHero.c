@@ -25,7 +25,7 @@
 
 #define SCREEN_SIZE 16
 #define WRONG_GUESSES 8 // has to be less than or equal to 8
-#define DELAY_TIME 1000 // 1000 us
+#define DELAY_TIME 250000 // 1/4 sec
 #define NEW_CHAR_DIR "/dev/lcd_driver"
 
 static int fd;
@@ -35,6 +35,7 @@ int mygetch(void);
 void sigHandler(int);
 int main() {
 	srand(time(NULL));
+	
 	// Sets up the path to the FIFO in order to interface with the LCD
 	fd = open(NEW_CHAR_DIR, O_RDWR);
 	signal(SIGINT, sigHandler);
@@ -50,16 +51,20 @@ int main() {
 	printf("until they lose.\nThe current high score is then displayed to the user and the user is prompted to play again.\n");
 	
 	int highScore = 0;
+	int rightInput = 1;
 	char cont = ' ';
-	// reset while loop
 	while (cont != 'q' || cont != 'Q') {
 		int misses = 0;
 		int currentScore = 0;
-		int counter = 0;
-		int rightInput = 1;
 		
 		printf("\n\nPress any key to continue.\n");
 		mygetch(); // waits for any user input
+		
+		// checks if user missed a note
+		if (!rightInput) {
+			misses++;
+		}
+		rightInput = 0;
 		
 		char screen[SCREEN_SIZE];
 		int i;
@@ -67,80 +72,66 @@ int main() {
 			screen[i] = ' ';
 		}
 		int noteType;
-		int inputted;
-		// playing while loop
 		while (misses < WRONG_GUESSES){
-			// checks if user missed a note
-			if (counter == 0) {
-				if (rightInput) {
-					currentScore++;
-				} else {
-					misses++;
-				}
-				rightInput = 0;
-				noteType = rand() % 4;
+			noteType = rand() % 4;
 			
-				// shifts array to the right
-				for (i = SCREEN_SIZE; i > 0; i--) {
-					screen[i] = screen[i - 1];
-				} 
+			// shifts array to the right
+			for (i = SCREEN_SIZE; i > 0; i--) {
+				screen[i] = screen[i - 1];
+			} 
 
-				// build string for screen
-				if (noteType == 0) {
-					strcat(screen, ">"); // right arrow ">"
-				} else if (noteType == 1) {
-					strcat(screen, "<"); // left arrow "<"
-				} else if (noteType == 2) {
-					strcat(screen, "v"); // down arrow "v"
-				} else {
-					strcat(screen, "^"); // up arrow "^"
-				}
-			
-			
-				// build string for current score
-				char scoreString[17];
-				sprintf(scoreString, "Score: %d", currentScore);
-				for (i = strlen(scoreString); i < SCREEN_SIZE; i++) {
-					scoreString[i] = ' ';
-				}
-				scoreString[SCREEN_SIZE] = '\0'; // needed?
-				
-				
-				
-				
-				
-				// build string for current misses
-				char missMarks[17];
-				strcpy(missMarks, "Misses: "); // 8 characters
-				for (i = SCREEN_SIZE - WRONG_GUESSES; i < SCREEN_SIZE; i++) {
-					missMarks[i] = 'X';
-				}
-				missMarks[SCREEN_SIZE] = '\0'; // needed if we concatenate anyway???
-			
-			
-				char total[SCREEN_SIZE * 3];
-				strcpy(total, screen); // first 16: playing screen
-				strcat(total, scoreString); // next 16 char: current score
-				strcat(total, missMarks); // last 16 chars: misses
-			
-			
-				// print onto appropriate LCD screens (32 in first, 16 on second)
-				write(fd, total, SCREEN_SIZE * 3);
-
-				
+			// build string for screen
+			if (noteType == 0) {
+				strcat(screen, ">"); // right arrow ">"
+			} else if (noteType == 1) {
+				strcat(screen, "<"); // left arrow "<"
+			} else if (noteType == 2) {
+				strcat(screen, "v"); // down arrow "v"
+			} else {
+				strcat(screen, "^"); // up arrow "^"
 			}
+			
+			
+			// build string for current score
+			char scoreString[17];
+			sprintf(scoreString, "Score: %d", currentScore);
+			for (i = strlen(scoreString); i < SCREEN_SIZE; i++) {
+				scoreString[i] = ' ';
+			}
+			scoreString[SCREEN_SIZE] = '\0'; // needed?
+				
+				
+				
+				
+				
+			// build string for current misses
+			char missMarks[17];
+			strcpy(missMarks, "Misses: "); // 8 characters
+			for (i = SCREEN_SIZE - WRONG_GUESSES; i < SCREEN_SIZE; i++) {
+				missMarks[i] = 'X';
+			}
+			missMarks[SCREEN_SIZE] = '\0'; // needed if we concatenate anyway???
+			
+			
+			
+			
+			
+			// write into buffer in chosen format
+			// (concatenate all of them???, 48 characters long)
+			
+			// print onto appropriate LCD screens (32 in first, 16 on second)
+			write(fd, write_buf, SCREEN_SIZE * 3);
 			// take input from user
 			usleep(DELAY_TIME);
-
-				// update inputted
-
-				// if right timing && right input, +1 point, else +1 miss
-				// input = button press from GPIO
-				/*if (input == screen[0] && !inputted) {
-					rightInput = 1;
-				}
-				*/
-				counter = (counter + 1) % 250; // 1/4 second
+			// if right timing && right input, +1 point, else +1 miss
+			// input = button press from GPIO
+			/*if (input == screen[0]) {
+				rightInput = 1;
+				currentScore++;
+			} else {
+				misses++;
+			}
+			*/
 		}
 		
 		// display lose screen
