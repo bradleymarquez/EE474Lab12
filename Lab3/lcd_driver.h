@@ -44,14 +44,14 @@ static ssize_t device_read(struct file*, char*, size_t, loff_t*);
 static ssize_t device_write(struct file*, const char*, size_t, loff_t*);
 
 void setBus(unsigned char);
-void command(unsigned char);
-void shiftRegister(unsigned char);
-void lcdSend(void);
-void initialize(void);
-void displayOff(void);
-void clearDisplay(void);
-void writeChar(unsigned char);
-void setAddress(unsigned char);
+void command(unsigned char, int);
+void setBus(unsigned char);
+void lcdSend(int);
+void initialize(int);
+void displayOff(int);
+void clearDisplay(int);
+void writeChar(unsigned char, int);
+void setAddress(unsigned char, int);
 
 /* operations usable by this file. */
 static struct file_operations fops = {
