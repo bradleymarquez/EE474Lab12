@@ -3,6 +3,7 @@ export CROSS_COMPILE=arm-linux-gnueabihf-
 ccflags-y := -std=gnu99
 
 obj-m += lcd_driver.o
+obj-m += button_driver.o
 
 # Kernel source directory
 KDIR = /home/WorkStation6/Documents/EE474Lab12/Lab3/bb-kernel/KERNEL

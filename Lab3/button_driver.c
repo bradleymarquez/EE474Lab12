@@ -7,11 +7,11 @@
 #include <linux/gpio.h>
 #include <linux/delay.h>
 
-#define UP 100
-#define DOWN 101
-#define LEFT 102
-#define RIGHT 103
-#define PRESS 104
+#define UP 65
+#define DOWN 48
+#define LEFT 20
+#define RIGHT 46
+#define PRESS 49
 
 /********************* FILE OPERATION FUNCTIONS ***************/
 
@@ -96,14 +96,19 @@ int device_close(struct inode* inode, struct  file *filp) {
 }
 
 // Called when user wants to get info from device file
+// Warning: calling read from this module without specifying the correct
+// number of bytes will resulte in no data being trasfered
 ssize_t device_read(struct file* filp, char* bufStoreData, size_t bufCount, loff_t* curOffset) {
-	virtual_device.status[0] = (char) (gpio_get_value(UP) + '0');
-	virtual_device.status[1] = (char) (gpio_get_value(DOWN) + '0');
-	virtual_device.status[2] = (char) (gpio_get_value(LEFT) + '0');
-	virtual_device.status[3] = (char) (gpio_get_value(RIGHT) + '0');
-	virtual_device.status[4] = (char) (gpio_get_value(PRESS) + '0');
+	virtual_device.status[0] = !gpio_get_value(UP);
+	virtual_device.status[1] = !gpio_get_value(DOWN);
+	virtual_device.status[2] = !gpio_get_value(LEFT);
+	virtual_device.status[3] = !gpio_get_value(RIGHT);
+	virtual_device.status[4] = !gpio_get_value(PRESS);
 
-	return copy_to_user(bufStoreData, virtual_device.status, NUM_BUTTONS);
+	if (bufCount != (NUM_BUTTONS * sizeof(int)))
+		bufCount = 0;
+
+	return copy_to_user(bufStoreData, virtual_device.status, bufCount);
 }
 
 // Called when user wants to send info to device
@@ -112,3 +117,6 @@ ssize_t device_write(struct file* filp, const char* bufSource, size_t bufCount, 
 	return copy_from_user(virtual_device.status, bufSource, bufCount);
 }
 
+MODULE_LICENSE("GPL"); // module license: required to use some functionalities.
+module_init(driver_entry); // declares which function runs on init.
+module_exit(driver_exit);  // declares which function runs on exit.

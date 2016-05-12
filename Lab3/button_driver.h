@@ -26,7 +26,7 @@
 // contains data about the device.
 // data : buffer for character data stored.
 struct fake_device {
-	char status[NUM_BUTTONS];
+	int status[NUM_BUTTONS];
 	struct semaphore sem;
 } virtual_device;
 

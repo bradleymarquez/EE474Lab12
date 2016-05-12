@@ -4,9 +4,7 @@
  *
  *	Features to add?
  *  sound from piezo buzzer - different frequencies on miss, hit, etc.
- *  button input
  *  increasing difficulty
- *	LEDs attached to button on sent inputs
  *	
  */
 
@@ -28,10 +26,20 @@
 #define SCREEN_SIZE 16
 #define WRONG_GUESSES 8 // has to be less than or equal to 8
 #define DELAY_TIME 1000 // 1000 us
-#define NEW_CHAR_DIR "/dev/lcd_driver"
+#define NEW_LCD_DIR "/dev/lcd_driver"
+#define NEW_BUT_DIR "/dev/button_driver"
 
-static int fd;
+#define UP 0
+#define DOWN 1
+#define LEFT 2
+#define RIGHT 3
+#define PRESS 4
+#define NUM_BUTTONS 5
 
+static int fd_lcd, fd_but;
+
+void pressAnyButton();
+int wantToQuit();
 int mygetch(void);
 void sigHandler(int);
 int printLose(int, int);
@@ -39,10 +47,12 @@ void openPath(void);
 void instructions(void);
 void playGame(void);
 int main() {
+	signal(SIGINT, sigHandler);
 	openPath();
 	instructions();
 	playGame();
-	close(fd);
+	close(fd_lcd);
+	close(fd_but);
 	return 0;
 }
 
@@ -50,57 +60,72 @@ int main() {
 void playGame(){
 	srand(time(NULL));
 	int highScore = 0;
-	char cont = ' ';
+	char cont[100];
+	cont[0] = ' ';
+	int quit = 0;
 	// reset while loop
-	while (cont != 'q' || cont != 'Q') {
-		int misses = 0;
+	int inputs[NUM_BUTTONS] = {0, 0, 0, 0, 0};
+	while (!quit) {
+		int misses = -1;
 		int currentScore = 0;
 		int counter = 0;
-		int rightInput = 1;
+		int rightInput = 0;
 		
-		printf("\n\nPress any key to continue.\n");
-		mygetch(); // waits for any user input
+		//printf("\nPress any button to continue.\n");
+		char *playScreen = "                Press button    to start!       ";
+		write(fd_lcd, playScreen, SCREEN_SIZE * 3);
+		pressAnyButton();
+		usleep(500000);
+		//char garbage[100];
+		//fgets(garbage, 100, stdin); // waits for any user input
+		//fflush(stdin);
 		
-		char screen[SCREEN_SIZE];
+		char screen[SCREEN_SIZE + 1];
 		int i;
-		for (int i = 0; i < SCREEN_SIZE; i++) {
+		for (i = 0; i < SCREEN_SIZE; i++) {
 			screen[i] = ' ';
 		}
-		int noteType;
-		int inputted;
+		screen[SCREEN_SIZE] = '\0';
+		int noteType = 5;
+		int inputted, index;
 		// playing while loop
 		while (misses < WRONG_GUESSES){
 			// checks if user missed a note
 			if (counter == 0) {
-				if (rightInput) {
+				if (rightInput && screen[0] != ' ') { // if right input
 					currentScore++;
-				} else {
+				} else if (!rightInput) { // if wrong input
 					misses++;
 				}
 				rightInput = 0;
+				inputted = 0;
 				noteType = rand() % 6;
 			
 				// shifts array to the right
-				for (i = SCREEN_SIZE; i > 0; i--) {
-					screen[i] = screen[i - 1];
+				for (i = 0; i < SCREEN_SIZE - 1; i++) {
+					screen[i] = screen[i + 1];
 				} 
 
 				// build string for screen
 				if (noteType == 0) {
-					strcat(screen, ">"); // right arrow ">"
+					screen[SCREEN_SIZE - 1] =  '^'; // up arrow 
 				} else if (noteType == 1) {
-					strcat(screen, "<"); // left arrow "<"
+					screen[SCREEN_SIZE - 1] =  'v'; // down arrow 
 				} else if (noteType == 2) {
-					strcat(screen, "v"); // down arrow "v"
+					screen[SCREEN_SIZE - 1] =  '<'; // left arrow 
 				} else if (noteType == 3) {
-					strcat(screen, "^"); // up arrow "^"
+					screen[SCREEN_SIZE - 1] =  '>'; // right arrow 
 				} else if (noteType == 4) {
-					strcat(screen, "o"); // press button
+					screen[SCREEN_SIZE - 1] =  'o'; // press button
 				} else {
-					strcat(screen, " "); // space = no input
+					screen[SCREEN_SIZE - 1] =  ' '; // space = no input
 				}
 			
-			
+				//for (i = 0; i < strlen(screen); i++) {
+				//	printf("%c",screen[i]);
+				//}
+				//printf("\n");
+
 				// build string for current score
 				char scoreString[17];
 				sprintf(scoreString, "Score: %d", currentScore);
@@ -112,60 +137,116 @@ void playGame(){
 				// build string for current misses
 				char missMarks[17];
 				strcpy(missMarks, "Misses: "); // 8 characters
-				for (i = SCREEN_SIZE - WRONG_GUESSES; i < SCREEN_SIZE; i++) {
+				//for (i = SCREEN_SIZE - WRONG_GUESSES; i < SCREEN_SIZE; i++) {			
+				//	missMarks[i] = 'X';
+				//}
+				
+				for (i = SCREEN_SIZE - WRONG_GUESSES; i < (SCREEN_SIZE - WRONG_GUESSES + misses); i++) {
 					missMarks[i] = 'X';
 				}
+				for (i = (SCREEN_SIZE - WRONG_GUESSES + misses); i < SCREEN_SIZE; i++) {
+					missMarks[i] = ' ';
+				}
+				
 				missMarks[SCREEN_SIZE] = '\0'; // needed if we concatenate anyway???
-			
-			
+				
+				/*for (i = 0; i < strlen(missMarks); i++) {
+					printf("%c",missMarks[i]);
+				}
+				printf("\n");*/
+
 				char total[SCREEN_SIZE * 3];
 				strcpy(total, screen); // first 16: playing screen
 				strcat(total, scoreString); // next 16 char: current score
 				strcat(total, missMarks); // last 16 chars: misses
 			
-			
+				for (i = 0; i < strlen(total); i++) {
+					printf("%c",total[i]);
+				}
+				printf("\n");
+
 				// print onto appropriate LCD screens (32 in first, 16 on second)
-				write(fd, total, SCREEN_SIZE * 3);
+				write(fd_lcd, total, SCREEN_SIZE * 3);
 
 				
 			}
-			// take input from user
-			usleep(DELAY_TIME);
+				// take input from user
+				usleep(DELAY_TIME);
 
+				read(fd_but, inputs, NUM_BUTTONS * sizeof(int));
+				index = 5;
+				for (i = 0; i < NUM_BUTTONS; i++) {
+					if (inputs[i] == 1) {
+						index = i;
+					}
+				}
+				
 				// update inputted
-
+				char note;
+				if (index == 0) {
+					note =  '^'; // up arrow 
+				} else if (index == 1) {
+					note =  'v'; // down arrow 
+				} else if (index == 2) {
+					note =  '<'; // left arrow 
+				} else if (index == 3) {
+					note =  '>'; // right arrow 
+				} else if (index == 4) {
+					note = 'o'; // press button
+				} else {
+					note =  ' '; // space = no input
+				}
 				// if right timing && right input, +1 point, else +1 miss
 				// input = button press from GPIO
-				/*if (input == screen[0] && !inputted) {
+				if (note == screen[0] && index != 5 && !inputted) { // take input
+					rightInput = 1;
+					inputted = 1;
+				} else if ((index != 5 && note != screen[0]) || (screen[0] == ' ' && index != 5)) { // if there is an input and the input is wrong
+					rightInput = 0;
+					inputted = 1;
+				} else if (screen[0] == ' ' && index == 5 && !inputted) {
 					rightInput = 1;
 				}
-				*/
-				counter = (counter + 1) % 250; // 1/4 second
+				if (currentScore < 250) {
+					counter = (counter + 1) % (750 - currentScore * 3); // 3/4 second
+				} else {
+					counter = (counter + 1) % 2;
+				}
 		}
 		
 		
 		highScore = printLose(currentScore, highScore);
-		
-		printf("\nPress 'q' to quit, or any other key to continue playing.\n");
-		cont = getchar();
-		getchar(); // gets rid of hanging \n
+		usleep(1000000);
+		pressAnyButton();
+		//printf("\nPress 'q' to quit, or any other key to continue playing.\n");
+		//fgets(cont, 100, stdin);
+		//fflush(stdin);
+		usleep(500000);
+		quit = wantToQuit();
+		usleep(500000);
 	}
 }
 
 // Sets up the path to the FIFO in order to interface with the LCD
 void openPath(){
-	fd = open(NEW_CHAR_DIR, O_RDWR);
-	signal(SIGINT, sigHandler);
-	if (fd < -1) {
-		printf("File %s cannot be opened\n", NEW_CHAR_DIR);
-		exit(1);
+	fd_lcd = open(NEW_LCD_DIR, O_RDWR);
+	fd_but = open(NEW_BUT_DIR, O_RDWR);
+	if (fd_lcd < -1 || fd_but < -1) {
+		if (fd_lcd < -1) {
+			printf("File %s cannot be opened\n", NEW_LCD_DIR);
+			exit(1);
+		} else {
+			printf("File %s cannot be opened\n", NEW_BUT_DIR);
+			exit(1);
+		}
 	}
 }
 
 // Prints the losing screens on the attached LCDs
-int printLose(int currentScore, highScore) {
+int printLose(int currentScore, int highScore) {
 	int newHighScore;
 	char winScreen[SCREEN_SIZE * 3];
+	int i;
 	if (currentScore > highScore) {
 		newHighScore = currentScore;
 		strcpy(winScreen, "NEW HIGH SCORE! ");
@@ -191,29 +272,15 @@ int printLose(int currentScore, highScore) {
 	}
 	highString[SCREEN_SIZE] = '\0'; // needed?
 	strcat(winScreen, highString);
-	write(fd, winScreen, SCREEN_SIZE * 3);
+	write(fd_lcd, winScreen, SCREEN_SIZE * 3);
 	return newHighScore;
-}
-
-// Waits for any user input, lets the program continue once an input is passed
-int mygetch(void) {
-  int ch;
-  struct termios oldt, newt;
-
-  tcgetattr ( STDIN_FILENO, &oldt );
-  newt = oldt;
-  newt.c_lflag &= ~( ICANON | ECHO );
-  tcsetattr ( STDIN_FILENO, TCSANOW, &newt );
-  ch = getchar();
-  tcsetattr ( STDIN_FILENO, TCSANOW, &oldt );
-
-  return ch;
 }
 
 // Sets the LCD to its off state if Ctrl+C (signal interrupt) is passed by the user
 void sigHandler(int signo) {
 	if (signo == SIGINT) {
-		close(fd);
+		close(fd_lcd);
+		close(fd_but);
 		exit(0);
 	}
 }
@@ -226,6 +293,35 @@ void instructions(){
 	printf("until they lose.\nThe current high score is then displayed to the user and the user is prompted to play again.\n");
 }
 
+void pressAnyButton() {
+	int input[NUM_BUTTONS] = {0, 0, 0, 0, 0};
+	while (!(input[UP] || input[DOWN] || input[LEFT] || input[RIGHT] || input[PRESS])) {
+		read(fd_but, input, NUM_BUTTONS * sizeof(int));
+	}
+}
+
+int wantToQuit() {
+	char quitScreen[SCREEN_SIZE * 3] = "Play again?      >No   Yes                      ";
+	write(fd_lcd, quitScreen, SCREEN_SIZE * 3);
+	int input[NUM_BUTTONS] = {0, 0, 0, 0, 0};	
+	int cursorOnNo = 1;
+	while (input[4] != 1) {
+		read(fd_but, input, (NUM_BUTTONS * sizeof(int)));
+		if ((cursorOnNo == 1) && (input[RIGHT] == 1)) {
+			cursorOnNo = 0;
+			quitScreen[17] = ' ';
+			quitScreen[22] = '>';
+			write(fd_lcd, quitScreen, SCREEN_SIZE * 3);
+		} else if ((cursorOnNo == 0) && (input[LEFT] == 1)) {
+			cursorOnNo = 1;
+			quitScreen[17] = '>';
+			quitScreen[22] = ' ';
+			write(fd_lcd, quitScreen, SCREEN_SIZE * 3);
+		}
+	}
+	return cursorOnNo;
+}
 
 
 	
+
