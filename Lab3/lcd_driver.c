@@ -76,6 +76,7 @@ int device_open(struct inode *inode, struct file* filp) {
 	}
 
 	// Request access to all the needed GPIO pins
+	printk("pre request");
 	gpio_request(DATA_, "Data");
 	gpio_request(LATCH_, "Latch");
 	gpio_request(CLOCK_, "Clock");
@@ -85,7 +86,8 @@ int device_open(struct inode *inode, struct file* filp) {
 	//gpio_request(RS1_, "RS2");
 	//gpio_request(RW1_, "R/W2");
 	gpio_request(E1_, "E2");
-
+	
+	printk("pre output");
 	// Set all pins for output
 	gpio_direction_output(DATA_, 0);
 	gpio_direction_output(LATCH_, 0);
@@ -96,8 +98,10 @@ int device_open(struct inode *inode, struct file* filp) {
 	//gpio_direction_output(RS1_, 0);
 	//gpio_direction_output(RW1_, 0);
 	gpio_direction_output(E1_, 0);
-
+	
+	printk("pre initialize 0");
 	initialize(0);
+	printk("pre initialize 1");
 	initialize(1);
 
 	return 0;
@@ -145,6 +149,7 @@ ssize_t device_write(struct file* filp, const char* bufSource, size_t bufCount, 
 	} else if (bufCount > 1) {
 		firstLine = bufCount;
 		secondLine = 0;
+		thirdLine = 0;
 	} else {
 		valid = 0;
 	}
