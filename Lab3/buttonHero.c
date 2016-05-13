@@ -2,10 +2,13 @@
  * Brad Marquez, Joseph Rothlin, Aigerim Shintemirova
  * 11 / May / 2016
  *
- *	Features to add?
- *  sound from piezo buzzer - different frequencies on miss, hit, etc.
- *  increasing difficulty
- *	sound keeps playing on win
+ * TO DO:
+ *  - clean code
+ *  - comment code
+ *  - create constants for integers used
+ *  - lab report
+ *
+ *
  */
 
 #include <stdio.h>
@@ -331,8 +334,7 @@ int printLose(int currentScore, int highScore) {
 void sigHandler(int signo) {
 	if (signo == SIGINT) {
 		closeBuzzer();
-		fclose(dirduty);
-		fclose(dirT);
+		close(fd);
 		exit(0);
 	}
 }
@@ -344,7 +346,7 @@ void instructions(){
 	printf("on the two-lined LCD screen. A miss is\ngiven on a wrong input or when the user misses an input. The user is allowed %d\nmisses", WRONG_GUESSES);
 	printf(" until they lose. The current high score is then displayed to the user\nand the user is prompted to play again.\n");
 
-	printf("Types of Notes:\n");
+	printf("\nTypes of Notes:\n");
 	printf("1. ^ = up on the joystick\n");
 	printf("2. v = down on the joystick\n");
 	printf("3. < = left on the joystick\n");
