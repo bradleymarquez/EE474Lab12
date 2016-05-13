@@ -237,6 +237,7 @@ void playGame(){
 					counter = (counter + 1) % 2; // cap on difficulty increase
 				}
 		}
+		write(fd_lcd, "                                                                 ", SCREEN_SIZE * 3);
 		// prints game over scree 
 		highScore = printLose(currentScore, highScore);
 		usleep(250000);
