@@ -21,10 +21,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <math.h>
-//#include <ctype.h>
-//#include <signal.h>
-//#include <fcntl.h>
-//#include <termios.h>
+#include <signal.h>
 
 #define SCREEN_SIZE 16 // total length of a line on the LCD screen
 #define WRONG_GUESSES 8 // has to be less than or equal to 8
@@ -40,7 +37,10 @@
 #define NUM_BUTTONS 5
 
 // period of notes used in nanoseconds
+const int noteG = 2551020;
+const int noteAb = 2409639;
 const int noteA = 2272727;
+const int noteBb = 2145186;
 const int noteB = 2024783;
 const int noteC = 1912046;
 const int noteD = 1702620;
@@ -57,7 +57,9 @@ int printLose(int, int);
 void openPath(void);
 void instructions(void);
 void playGame(void);
-void buzzer(FILE*, FILE*, int, int);
+void buzzer(int, int);
+void loseMusic(void);
+void winMusic(void);
 void closeBuzzer(void);
 int main() {
 	signal(SIGINT, sigHandler);
@@ -200,22 +202,22 @@ void playGame(){
 				char note;
 				if (index == 0) {
 					note =  '^'; // up arrow
-					buzzer(dirduty, dirT, noteA, counter);
+					buzzer(noteA, counter);
 				} else if (index == 1) {
 					note =  'v'; // down arrow 
-					buzzer(dirduty, dirT, noteB, counter);
+					buzzer(noteB, counter);
 				} else if (index == 2) {
 					note =  '<'; // left arrow 
-					buzzer(dirduty, dirT, noteC, counter);
+					buzzer(noteC, counter);
 				} else if (index == 3) {
 					note =  '>'; // right arrow 
-					buzzer(dirduty, dirT, noteD, counter);
+					buzzer(noteD, counter);
 				} else if (index == 4) {
 					note = 'o'; // press button
-					buzzer(dirduty, dirT, noteE, counter);
+					buzzer(noteE, counter);
 				} else {
 					note =  ' '; // space = no input
-					buzzer(dirduty, dirT, 0, counter);
+					buzzer(0, counter);
 				}
 
 				if (note == screen[0] && index != 5 && !inputted) { // if the input matches the note
@@ -235,14 +237,13 @@ void playGame(){
 					counter = (counter + 1) % 2; // cap on difficulty increase
 				}
 		}
+		// prints game over scree 
+		highScore = printLose(currentScore, highScore);
+		usleep(250000);
 		
 		// closses buzzer files
 		closeBuzzer();
-		
-		// prints game over scree 
-		highScore = printLose(currentScore, highScore);
-		usleep(1000000);
-		
+
 		// prompts user to play again
 		pressAnyButton();
 		usleep(500000);
@@ -255,16 +256,42 @@ void playGame(){
 	close(fd_but);
 }
 
+// Plays sounds played on losing screen
+void loseMusic() {
+	buzzer(noteBb, 0);
+	usleep(500000);
+	buzzer(noteA, 0);
+	usleep(500000);
+	buzzer(noteAb, 0);
+	usleep(500000);
+	buzzer(noteG, 0);
+	usleep(1000000);
+	buzzer(0, 0);
+}
+
+// Plays sounds played when user gets new high score
+void winMusic() {
+	buzzer(noteA, 0);
+	usleep(500000);
+	buzzer(noteBb, 0);
+	usleep(500000);
+	buzzer(noteB, 0);
+	usleep(500000);
+	buzzer(noteC, 0);
+	usleep(1000000);
+	buzzer(0, 0);
+}
+
 // Closes files associated with the buzzer
 void closeBuzzer() {
-	buzzer(dirduty, dirT, 0, 0);
+	buzzer(0, 0);
 	fclose(sys2);
 	fclose(dirduty);
 	fclose(dirT);
 }
 
 // Plays given sound on the buzzer
-void buzzer(FILE *dirduty, FILE *dirT, int note, int counter) {
+void buzzer(int note, int counter) {
 	if (counter % 15 == 0) {
 		fprintf(dirT, "%d", note);
 		fflush(dirT);
@@ -291,14 +318,17 @@ void openPath(){
 
 // Prints the losing screens on the attached LCDs
 int printLose(int currentScore, int highScore) {
-	int newHighScore;
+	int newHighScore, i, lost;
 	char winScreen[SCREEN_SIZE * 3];
-	int i;
 	if (currentScore > highScore) {
+		lost = 0;
 		newHighScore = currentScore;
+		printf("\nNEW HIGH SCORE!\n");
 		strcpy(winScreen, "NEW HIGH SCORE! ");
 	} else {
+		lost = 1;
 		newHighScore = highScore;
+		printf("\nSORRY, YOU LOST!\n");
 		strcpy(winScreen, "SORRY, YOU LOST!");
 	}
 	
@@ -320,6 +350,11 @@ int printLose(int currentScore, int highScore) {
 	highString[SCREEN_SIZE] = '\0';
 	strcat(winScreen, highString);
 	write(fd_lcd, winScreen, SCREEN_SIZE * 3);
+	if (lost) {
+		loseMusic();
+	} else {
+		winMusic();
+	}	
 	return newHighScore;
 }
 
