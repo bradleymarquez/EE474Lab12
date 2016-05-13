@@ -5,7 +5,7 @@
  *	Features to add?
  *  sound from piezo buzzer - different frequencies on miss, hit, etc.
  *  increasing difficulty
- *	
+ *	sound keeps playing on win
  */
 
 #include <stdio.h>
@@ -36,7 +36,16 @@
 #define PRESS 4
 #define NUM_BUTTONS 5
 
+// period of notes used in nanoseconds
+const int noteA = 2272727;
+const int noteB = 2024783;
+const int noteC = 1912046;
+const int noteD = 1702620;
+const int noteE = 1517451;
+
+
 static int fd_lcd, fd_but;
+static FILE *sys2, *dirduty, *dirT;
 
 void pressAnyButton();
 int wantToQuit();
@@ -46,7 +55,8 @@ int printLose(int, int);
 void openPath(void);
 void instructions(void);
 void playGame(void);
-void buzzer(int);
+void buzzer(FILE*, FILE*, int, int);
+void closeBuzzer(void);
 int main() {
 	signal(SIGINT, sigHandler);
 	openPath();
@@ -67,6 +77,18 @@ void playGame(){
 	// reset while loop
 	int inputs[NUM_BUTTONS] = {0, 0, 0, 0, 0};
 	while (!quit) {
+		sys2 = fopen("/sys/devices/bone_capemgr.9/slots", "w");
+		fseek(sys2, 0, SEEK_END);
+		
+		fprintf(sys2, "am33xx_pwm");
+		fflush(sys2);
+
+		fprintf(sys2, "bone_pwm_P9_14");
+		fflush(sys2);
+
+		// Sets the pointers to the appropriate duty and period files
+		dirduty = fopen("/sys/devices/ocp.3/pwm_test_P9_14.15/duty", "w");
+		dirT = fopen("/sys/devices/ocp.3/pwm_test_P9_14.15/period", "w");
 		int misses = -1;
 		int currentScore = 0;
 		int counter = 0;
@@ -189,25 +211,24 @@ void playGame(){
 				char note;
 				if (index == 0) {
 					note =  '^'; // up arrow
-					buzzer(2272727);
+					buzzer(dirduty, dirT, noteA, counter);
 				} else if (index == 1) {
 					note =  'v'; // down arrow 
-					buzzer(2145186);
+					buzzer(dirduty, dirT, noteB, counter);
 				} else if (index == 2) {
 					note =  '<'; // left arrow 
-					buzzer(1912046);
+					buzzer(dirduty, dirT, noteC, counter);
 				} else if (index == 3) {
 					note =  '>'; // right arrow 
-					buzzer(1702620);
+					buzzer(dirduty, dirT, noteD, counter);
 				} else if (index == 4) {
 					note = 'o'; // press button
-					buzzer(1517451);
+					buzzer(dirduty, dirT, noteE, counter);
 				} else {
 					note =  ' '; // space = no input
-					buzzer(0);
+					buzzer(dirduty, dirT, 0, counter);
 				}
-				// if right timing && right input, +1 point, else +1 miss
-				// input = button press from GPIO
+
 				if (note == screen[0] && index != 5 && !inputted) { // take input
 					rightInput = 1;
 					inputted = 1;
@@ -224,7 +245,7 @@ void playGame(){
 				}
 		}
 		
-		
+		closeBuzzer();
 		highScore = printLose(currentScore, highScore);
 		usleep(1000000);
 		pressAnyButton();
@@ -235,35 +256,26 @@ void playGame(){
 		quit = wantToQuit();
 		usleep(500000);
 	}
+	
 }
 
-// Plays given sound on the piezobuzzer
-void buzzer(int note) {
-	FILE *sys2, *dirduty, *dirT;
-
-	sys2 = fopen("/sys/devices/bone_capemgr.9/slots", "w");
-	fseek(sys2, 0, SEEK_END);
-
-	fprintf(sys2, "am33xx_pwm");
-	fflush(sys2);
-
-	fprintf(sys2, "bone_pwm_P9_14");
-	fflush(sys2);
-
-	// Sets the pointers to the appropriate duty and period files
-	dirduty = fopen("/sys/devices/ocp.3/pwm_test_P9_14.15/duty", "w");
-	dirT = fopen("/sys/devices/ocp.3/pwm_test_P9_14.15/period", "w");
-	
-
-	fprintf(dirduty, "%d", note / 2);
-	fflush(dirduty);
-
-	fprintf(dirT, "%d", note);
-	fflush(dirT);
-	
+// Closes pointers associated with the buzzer
+void closeBuzzer() {
+	buzzer(dirduty, dirT, 0, 0);
 	fclose(sys2);
 	fclose(dirduty);
 	fclose(dirT);
+}
+
+// Plays given sound on the piezobuzzer
+void buzzer(FILE *dirduty, FILE *dirT, int note, int counter) {
+	if (counter % 15 == 0) {
+		fprintf(dirT, "%d", note);
+		fflush(dirT);
+
+		fprintf(dirduty, "%d", note / 2);
+		fflush(dirduty);
+	}
 }
 
 // Sets up the path to the FIFO in order to interface with the LCD
@@ -318,8 +330,9 @@ int printLose(int currentScore, int highScore) {
 // Sets the LCD to its off state if Ctrl+C (signal interrupt) is passed by the user
 void sigHandler(int signo) {
 	if (signo == SIGINT) {
-		close(fd_lcd);
-		close(fd_but);
+		closeBuzzer();
+		fclose(dirduty);
+		fclose(dirT);
 		exit(0);
 	}
 }
@@ -330,6 +343,14 @@ void instructions(){
 	printf("button when it gets to the far left of the single lined screen. Current score\nand the number of misses are displayed ");
 	printf("on the two-lined LCD screen. A miss is\ngiven on a wrong input or when the user misses an input. The user is allowed %d\nmisses", WRONG_GUESSES);
 	printf(" until they lose. The current high score is then displayed to the user\nand the user is prompted to play again.\n");
+
+	printf("Types of Notes:\n");
+	printf("1. ^ = up on the joystick\n");
+	printf("2. v = down on the joystick\n");
+	printf("3. < = left on the joystick\n");
+	printf("4. > = right on the joystick\n");
+	printf("5. o = press the joystick\n");
+	printf("6.   = do nothing\n");	
 }
 
 void pressAnyButton() {
