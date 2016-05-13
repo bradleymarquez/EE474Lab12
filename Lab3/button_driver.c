@@ -1,6 +1,6 @@
 /*
  * button_driver.c: holds a buffer of 100 characters as device file.
- *             prints out contents of buffer on read.
+ *             returns contents of buffer (button input) on read.
  *             writes over buffer values on write.
  */
 #include "button_driver.h"
@@ -37,7 +37,7 @@ static int __init driver_entry(void) {
 	// After creating cdev, add it to kernel
 	ret = cdev_add(mcdev, dev_num, 1);
 	if (ret < 0) {
-		printk(KERN_ALERT "button_driver: unable to add cdev to kernerl\n");
+		printk(KERN_ALERT "button_driver: unable to add cdev to kernel\n");
 		return ret;
 	}
 	
@@ -48,7 +48,7 @@ static int __init driver_entry(void) {
 	return 0;
 }
 
-// called up exit.
+// called up on exit.
 // unregisters the device and all associated gpios with it.
 static void __exit driver_exit(void) {
 	cdev_del(mcdev);
@@ -57,7 +57,7 @@ static void __exit driver_exit(void) {
 }
 
 // Called on device file open
-//	inode reference to file on disk, struct file represents an abstract
+// inode reference to file on disk, struct file represents an abstract
 // checks to see if file is already open (semaphore is in use)
 // prints error message if device is busy.
 int device_open(struct inode *inode, struct file* filp) {
@@ -73,7 +73,7 @@ int device_open(struct inode *inode, struct file* filp) {
 	gpio_request(RIGHT, "Right");
 	gpio_request(PRESS, "Press");
 
-	// Set all pins for output
+	// Sets all pins for output
 	gpio_direction_input(UP);
 	gpio_direction_input(DOWN);
 	gpio_direction_input(LEFT);
@@ -84,7 +84,7 @@ int device_open(struct inode *inode, struct file* filp) {
 }
 
 // Called upon close
-// closes device, clear display, free the GPIO pins, and returns access to semaphore.
+// closes device, frees the GPIO pins, and returns access to semaphore.
 int device_close(struct inode* inode, struct  file *filp) {
 	up(&virtual_device.sem);
 	gpio_free(UP);
@@ -95,9 +95,9 @@ int device_close(struct inode* inode, struct  file *filp) {
 	return 0;
 }
 
-// Called when user wants to get info from device file
+// Called when user wants to get state of the button input
 // Warning: calling read from this module without specifying the correct
-// number of bytes will resulte in no data being trasfered
+// number of bytes will result in no data being transferred
 ssize_t device_read(struct file* filp, char* bufStoreData, size_t bufCount, loff_t* curOffset) {
 	virtual_device.status[0] = !gpio_get_value(UP);
 	virtual_device.status[1] = !gpio_get_value(DOWN);

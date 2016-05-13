@@ -1,7 +1,7 @@
 /*
  * lcd_driver.c: holds a buffer of 100 characters as device file.
  *             prints out contents of buffer on read.
- *             writes over buffer values on write.
+ *             writes over buffer values on write, writing to LCD screens.
  */
 #include "lcd_driver.h"
 #include <linux/gpio.h>
@@ -21,8 +21,6 @@
 #define GAME_SCREEN 0
 #define SCORE_SCREEN 1
 
-//static int[] RSArr = RS0_;
-//static int[] RWArr = RW0_;
 static int EArr[2] = {E_GAME, E_SCORE};
 
 /********************* FILE OPERATION FUNCTIONS ***************/
@@ -60,7 +58,7 @@ static int __init driver_entry(void) {
 	return 0;
 }
 
-// called up exit.
+// called up on exit.
 // unregisters the device and all associated gpios with it.
 static void __exit driver_exit(void) {
 	cdev_del(mcdev);
@@ -69,7 +67,7 @@ static void __exit driver_exit(void) {
 }
 
 // Called on device file open
-//	inode reference to file on disk, struct file represents an abstract
+// inode reference to file on disk, struct file represents an abstract
 // checks to see if file is already open (semaphore is in use)
 // prints error message if device is busy.
 int device_open(struct inode *inode, struct file* filp) {
@@ -79,18 +77,14 @@ int device_open(struct inode *inode, struct file* filp) {
 	}
 
 	// Request access to all the needed GPIO pins
-	printk("pre request\n");
 	gpio_request(DATA_, "Data");
 	gpio_request(LATCH_, "Latch");
 	gpio_request(CLOCK_, "Clock");
 	gpio_request(RS_, "RS1");
 	gpio_request(RW_, "R/W1");
 	gpio_request(E_GAME, "E1");
-	//gpio_request(RS1_, "RS2");
-	//gpio_request(RW1_, "R/W2");
 	gpio_request(E_SCORE, "E2");
 	
-	printk("pre output\n");
 	// Set all pins for output
 	gpio_direction_output(DATA_, 0);
 	gpio_direction_output(LATCH_, 0);
@@ -98,20 +92,16 @@ int device_open(struct inode *inode, struct file* filp) {
 	gpio_direction_output(RS_, 0);
 	gpio_direction_output(RW_, 0);
 	gpio_direction_output(E_GAME, 0);
-	//gpio_direction_output(RS1_, 0);
-	//gpio_direction_output(RW1_, 0);
 	gpio_direction_output(E_SCORE, 0);
 	
-	printk("pre initialize 0\n");
+	// Initializes both LCDs
 	initialize(GAME_SCREEN);
-	printk("pre initialize 1\n");
 	initialize(SCORE_SCREEN);
-	printk("post initialize 1\n");
 	return 0;
 }
 
 // Called upon close
-// closes device, clear display, free the GPIO pins, and returns access to semaphore.
+// closes devices, clears displays, frees the GPIO pins, and returns access to semaphore.
 int device_close(struct inode* inode, struct  file *filp) {
 	up(&virtual_device.sem);
 	clearDisplay(GAME_SCREEN);
@@ -124,8 +114,6 @@ int device_close(struct inode* inode, struct  file *filp) {
 	gpio_free(RS_);
 	gpio_free(RW_);
 	gpio_free(E_GAME);
-	//gpio_free(RS1_);
-	//gpio_free(RW1_);
 	gpio_free(E_SCORE);
 	return 0;
 }
@@ -136,11 +124,12 @@ ssize_t device_read(struct file* filp, char* bufStoreData, size_t bufCount, loff
 }
 
 // Called when user wants to send info to device
-// Calling a shift register file
+// Calling a shift register file to write to both LCDs
 ssize_t device_write(struct file* filp, const char* bufSource, size_t bufCount, loff_t* curOffset) {
 	int firstLine, secondLine, thirdLine, valid = 1;
 	int i;
-	// Determine how many lines of the display will be used
+	
+	// Determine how many lines of the displays will be used
 	if (bufCount > (CHAR_PER_LINE * NUM_LINES)) {
 		firstLine = CHAR_PER_LINE;
 		secondLine = CHAR_PER_LINE;
@@ -160,47 +149,44 @@ ssize_t device_write(struct file* filp, const char* bufSource, size_t bufCount, 
 	if (valid) {
 		clearDisplay(GAME_SCREEN);
 		clearDisplay(SCORE_SCREEN);
-		// Write to the first line of display
+		
+		// Write to the first line of the one line LCD
 		for (i = 0; i < firstLine; i++) {
 			writeChar(bufSource[i], GAME_SCREEN);
 		}
 
-		// Write to the second line
-		
+		// Write to the first line of the two line LCD
 		for (i = 0; i < secondLine; i++) {
 			writeChar(bufSource[i + CHAR_PER_LINE], SCORE_SCREEN);
 		}
-
-		if (bufCount > CHAR_PER_LINE) setAddress((unsigned char) 0x40, SCORE_SCREEN);
 		
+		// Writes to the second line of the two line LCD
+		if (bufCount > CHAR_PER_LINE) setAddress((unsigned char) 0x40, SCORE_SCREEN);
 		for (i = 0; i < thirdLine; i++) {
 			writeChar(bufSource[i + (2*CHAR_PER_LINE)], SCORE_SCREEN);
 		}
 		
+		// returns cursor of one line to far left
 		setAddress((unsigned char) 0x00, GAME_SCREEN);
-
 	}
 	return copy_from_user(virtual_device.data, bufSource, bufCount);
 }
 
 // Initializes the LCD with the proper series of commands
 void initialize(int screenSel) {
-	printk("initialize 1\n");
 	gpio_set_value(RS_, 0);
 	gpio_set_value(RW_, 0);
 	msleep(15);
-	printk("initialize 2\n");
+
 	command((unsigned char) 0x30, screenSel); // Function Set #1
 	msleep(5);
-	printk("initialize 3\n");
+
 	lcdSend(screenSel); // Function Set #2
 	msleep(1);
 	
-	printk("initialize 4\n");
 	lcdSend(screenSel); // Function Set #3
 	msleep(1);
 
-	printk("initialize 5\n");
 	if (screenSel == SCORE_SCREEN) { // Function Set #4
 		command((unsigned char) 0x38, screenSel); // 5x7 font, 2 lines
 	} else {
@@ -208,27 +194,21 @@ void initialize(int screenSel) {
 	}
 	msleep(1);
 
-	printk("initialize 6\n");
 	command((unsigned char) 0x08, screenSel); // Display OFF
 	udelay(50);
 
-	printk("initialize 7\n");
 	command((unsigned char) 0x01, screenSel); // Clear Display
 	msleep(16);
 	
-	printk("initialize 8\n");
 	command((unsigned char) 0x06, screenSel); // Increment mode
 	udelay(50);
 
-	printk("initialize 9\n");
 	if (screenSel == SCORE_SCREEN) {// Entry Mode Set
 		command((unsigned char) 0x0C, screenSel); // Cursor OFF, Blink OFF
 	} else {
 		command((unsigned char) 0x0F, screenSel); // Cursor ON, Blink On
 	}
 	udelay(50);
-
-	printk("initialize 10\n");
 }
 
 // Loads data through the shift register and sends the command to the LCD

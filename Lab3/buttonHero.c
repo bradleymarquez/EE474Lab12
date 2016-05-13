@@ -13,24 +13,24 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <fcntl.h>
-#include <termios.h>
 #include <unistd.h>
 #include <string.h>
-#include <ctype.h>
-#include <signal.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <time.h>
 #include <math.h>
+//#include <ctype.h>
+//#include <signal.h>
+//#include <fcntl.h>
+//#include <termios.h>
 
-#define SCREEN_SIZE 16
+#define SCREEN_SIZE 16 // total length of a line on the LCD screen
 #define WRONG_GUESSES 8 // has to be less than or equal to 8
-#define DELAY_TIME 1000 // 1000 us
-#define NEW_LCD_DIR "/dev/lcd_driver"
-#define NEW_BUT_DIR "/dev/button_driver"
+#define DELAY_TIME 1000 // time between each input update
+#define NEW_LCD_DIR "/dev/lcd_driver" // lcd driver directory
+#define NEW_BUT_DIR "/dev/button_driver" // button driver directory
 
 #define UP 0
 #define DOWN 1
@@ -45,7 +45,6 @@ const int noteB = 2024783;
 const int noteC = 1912046;
 const int noteD = 1702620;
 const int noteE = 1517451;
-
 
 static int fd_lcd, fd_but;
 static FILE *sys2, *dirduty, *dirT;
@@ -70,59 +69,60 @@ int main() {
 	return 0;
 }
 
-// Plays the game button hero on the attached LCD using the written kernel driver
+// Plays the game Button Hero on the attached LCDs
 void playGame(){
 	srand(time(NULL));
 	int highScore = 0;
 	char cont[100];
 	cont[0] = ' ';
 	int quit = 0;
-	// reset while loop
 	int inputs[NUM_BUTTONS] = {0, 0, 0, 0, 0};
+	
+	// main game loop
 	while (!quit) {
+		// Sets up piezobuzzer for sound
 		sys2 = fopen("/sys/devices/bone_capemgr.9/slots", "w");
 		fseek(sys2, 0, SEEK_END);
-		
 		fprintf(sys2, "am33xx_pwm");
 		fflush(sys2);
-
 		fprintf(sys2, "bone_pwm_P9_14");
 		fflush(sys2);
-
 		// Sets the pointers to the appropriate duty and period files
 		dirduty = fopen("/sys/devices/ocp.3/pwm_test_P9_14.15/duty", "w");
 		dirT = fopen("/sys/devices/ocp.3/pwm_test_P9_14.15/period", "w");
+		
 		int misses = -1;
 		int currentScore = 0;
 		int counter = 0;
 		int rightInput = 0;
 		
-		//printf("\nPress any button to continue.\n");
+		// Splash screen before game start
 		char *playScreen = "                Press button    to start!       ";
 		write(fd_lcd, playScreen, SCREEN_SIZE * 3);
 		pressAnyButton();
 		usleep(500000);
-		//char garbage[100];
-		//fgets(garbage, 100, stdin); // waits for any user input
-		//fflush(stdin);
-		
+
+		// initializes playing screen
 		char screen[SCREEN_SIZE + 1];
 		int i;
 		for (i = 0; i < SCREEN_SIZE; i++) {
 			screen[i] = ' ';
 		}
 		screen[SCREEN_SIZE] = '\0';
+		
+		// game starts
 		int noteType = 5;
 		int inputted, index;
-		// playing while loop
 		while (misses < WRONG_GUESSES){
-			// checks if user missed a note
+			
+			// checks if user gets a hit or miss
 			if (counter == 0) {
 				if (rightInput && screen[0] != ' ') { // if right input
 					currentScore++;
 				} else if (!rightInput) { // if wrong input
 					misses++;
 				}
+				
 				rightInput = 0;
 				inputted = 0;
 				noteType = rand() % 6;
@@ -132,7 +132,7 @@ void playGame(){
 					screen[i] = screen[i + 1];
 				} 
 
-				// build string for screen
+				// adds random note to game screen
 				if (noteType == 0) {
 					screen[SCREEN_SIZE - 1] =  '^'; // up arrow 
 				} else if (noteType == 1) {
@@ -147,61 +147,47 @@ void playGame(){
 					screen[SCREEN_SIZE - 1] =  ' '; // space = no input
 				}
 			
-				//for (i = 0; i < strlen(screen); i++) {
-				//	printf("%c",screen[i]);
-				//}
-				//printf("\n");
-
-				// build string for current score
+				// builds string for current score
 				char scoreString[17];
 				sprintf(scoreString, "Score: %d", currentScore);
 				for (i = strlen(scoreString); i < SCREEN_SIZE; i++) {
 					scoreString[i] = ' ';
 				}
-				scoreString[SCREEN_SIZE] = '\0'; // needed?
+				scoreString[SCREEN_SIZE] = '\0';
 				
-				// build string for current misses
+				// builds string for current misses
 				char missMarks[17];
-				strcpy(missMarks, "Misses: "); // 8 characters
-				//for (i = SCREEN_SIZE - WRONG_GUESSES; i < SCREEN_SIZE; i++) {			
-				//	missMarks[i] = 'X';
-				//}
-				
+				strcpy(missMarks, "Misses: "); // 8 characters		
 				for (i = SCREEN_SIZE - WRONG_GUESSES; i < (SCREEN_SIZE - WRONG_GUESSES + misses); i++) {
 					missMarks[i] = 'X';
 				}
 				for (i = (SCREEN_SIZE - WRONG_GUESSES + misses); i < SCREEN_SIZE; i++) {
 					missMarks[i] = ' ';
 				}
-				
 				missMarks[SCREEN_SIZE] = '\0'; // needed if we concatenate anyway???
 				
-				/*for (i = 0; i < strlen(missMarks); i++) {
-					printf("%c",missMarks[i]);
-				}
-				printf("\n");*/
-
+				// builds total string that is passed to the LCD driver
 				char total[SCREEN_SIZE * 3];
-				strcpy(total, screen); // first 16: playing screen
+				strcpy(total, screen); // first 16 chars: playing screen
 				strcat(total, scoreString); // next 16 char: current score
 				strcat(total, missMarks); // last 16 chars: misses
-			
+				
+				// prints onto appropriate LCD screens (32 in first, 16 on second)
+				write(fd_lcd, total, SCREEN_SIZE * 3);
+				
+				// prints screen, score, and misses to terminal
 				for (i = 0; i < strlen(total); i++) {
 					if (i % 16 == 0) {
 						printf("\n");
 					}
 					printf("%c",total[i]);
 				}
-				printf("\n");
-
-				// print onto appropriate LCD screens (32 in first, 16 on second)
-				write(fd_lcd, total, SCREEN_SIZE * 3);
-
-				
+				printf("\n");			
 			}
-				// take input from user
+				// delay in between input update
 				usleep(DELAY_TIME);
-
+				
+				// takes in inputs from user
 				read(fd_but, inputs, NUM_BUTTONS * sizeof(int));
 				index = 5;
 				for (i = 0; i < NUM_BUTTONS; i++) {
@@ -210,7 +196,7 @@ void playGame(){
 					}
 				}
 				
-				// update inputted
+				// processes input, plays corresponding sound on buzzer
 				char note;
 				if (index == 0) {
 					note =  '^'; // up arrow
@@ -232,37 +218,44 @@ void playGame(){
 					buzzer(dirduty, dirT, 0, counter);
 				}
 
-				if (note == screen[0] && index != 5 && !inputted) { // take input
+				if (note == screen[0] && index != 5 && !inputted) { // if the input matches the note
 					rightInput = 1;
 					inputted = 1;
 				} else if ((index != 5 && note != screen[0]) || (screen[0] == ' ' && index != 5)) { // if there is an input and the input is wrong
 					rightInput = 0;
 					inputted = 1;
-				} else if (screen[0] == ' ' && index == 5 && !inputted) {
+				} else if (screen[0] == ' ' && index == 5 && !inputted) { // if there is a space note and nothing is pressed
 					rightInput = 1;
 				}
+				
+				// sets game screen update speed
 				if (currentScore < 250) {
-					counter = (counter + 1) % (750 - currentScore * 3); // 3/4 second
+					counter = (counter + 1) % (750 - currentScore * 3); // increasing difficulty linearly with score
 				} else {
-					counter = (counter + 1) % 2;
+					counter = (counter + 1) % 2; // cap on difficulty increase
 				}
 		}
 		
+		// closses buzzer files
 		closeBuzzer();
+		
+		// prints game over scree 
 		highScore = printLose(currentScore, highScore);
 		usleep(1000000);
+		
+		// prompts user to play again
 		pressAnyButton();
-		//printf("\nPress 'q' to quit, or any other key to continue playing.\n");
-		//fgets(cont, 100, stdin);
-		//fflush(stdin);
 		usleep(500000);
 		quit = wantToQuit();
 		usleep(500000);
 	}
 	
+	// closes LCD/button dev files
+	close(fd_lcd);
+	close(fd_but);
 }
 
-// Closes pointers associated with the buzzer
+// Closes files associated with the buzzer
 void closeBuzzer() {
 	buzzer(dirduty, dirT, 0, 0);
 	fclose(sys2);
@@ -270,7 +263,7 @@ void closeBuzzer() {
 	fclose(dirT);
 }
 
-// Plays given sound on the piezobuzzer
+// Plays given sound on the buzzer
 void buzzer(FILE *dirduty, FILE *dirT, int note, int counter) {
 	if (counter % 15 == 0) {
 		fprintf(dirT, "%d", note);
@@ -309,37 +302,38 @@ int printLose(int currentScore, int highScore) {
 		strcpy(winScreen, "SORRY, YOU LOST!");
 	}
 	
-	// build string for current score
+	// builds string for current score
 	char scoreString[17];
 	sprintf(scoreString, "Score: %d", currentScore);
 	for (i = strlen(scoreString); i < SCREEN_SIZE; i++) {
 		scoreString[i] = ' ';
 	}
-	scoreString[SCREEN_SIZE] = '\0'; // needed?
+	scoreString[SCREEN_SIZE] = '\0';
 	strcat(winScreen, scoreString);
 	
-	// build string for current high score
+	// builds string for current high score
 	char highString[17];
 	sprintf(highString, "High Score: %d", highScore);
 	for (i = strlen(highString); i < SCREEN_SIZE; i++) {
 		highString[i] = ' ';
 	}
-	highString[SCREEN_SIZE] = '\0'; // needed?
+	highString[SCREEN_SIZE] = '\0';
 	strcat(winScreen, highString);
 	write(fd_lcd, winScreen, SCREEN_SIZE * 3);
 	return newHighScore;
 }
 
-// Sets the LCD to its off state if Ctrl+C (signal interrupt) is passed by the user
+// Sets the LCD/button to its off state if Ctrl+C (signal interrupt) is passed by the user
 void sigHandler(int signo) {
 	if (signo == SIGINT) {
 		closeBuzzer();
-		close(fd);
+		close(fd_lcd);
+		close(fd_but);
 		exit(0);
 	}
 }
 
-// Prints the instructions for the user to view on the terminal
+// Prints the instructions for the user to view on the terminal on game start up
 void instructions(){
 	printf("\nHello! Welcome to Button Hero!\n\nINSTRUCTIONS: Playing this game requires one user. Press the corresponding\n");
 	printf("button when it gets to the far left of the single lined screen. Current score\nand the number of misses are displayed ");
@@ -355,6 +349,7 @@ void instructions(){
 	printf("6.   = do nothing\n");	
 }
 
+// Waits for the user to input anything on the button
 void pressAnyButton() {
 	int input[NUM_BUTTONS] = {0, 0, 0, 0, 0};
 	while (!(input[UP] || input[DOWN] || input[LEFT] || input[RIGHT] || input[PRESS])) {
@@ -362,6 +357,7 @@ void pressAnyButton() {
 	}
 }
 
+// Asks user if they would like to play again
 int wantToQuit() {
 	char quitScreen[SCREEN_SIZE * 3] = "Play again?      >No   Yes                      ";
 	write(fd_lcd, quitScreen, SCREEN_SIZE * 3);
