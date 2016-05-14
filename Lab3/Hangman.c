@@ -1,6 +1,6 @@
 /*	Hangman.c
- * Brad Marquez, Joseph Rothlin, Aigerim Shintemirova
- * 22 / April / 2016
+ *  Brad Marquez, Joseph Rothlin, Aigerim Shintemirova
+ *  22 / April / 2016
  *
  *	Hangman game implemented on C. Two users interface with the terminal and the current game state is shown on the LCD.
  * 	Plays one game of hangman. User One inputs a word and User Two will guess characters until they guess too many wrong

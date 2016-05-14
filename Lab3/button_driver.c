@@ -1,17 +1,17 @@
 /*
  * button_driver.c: holds a buffer of 100 characters as device file.
- *             prints out contents of buffer on read.
+ *             returns contents of buffer (button input) on read.
  *             writes over buffer values on write.
  */
 #include "button_driver.h"
 #include <linux/gpio.h>
 #include <linux/delay.h>
 
-#define UP
-#define DOWN
-#define LEFT
-#define RIGHT
-#define PRESS
+#define UP 65
+#define DOWN 48
+#define LEFT 20
+#define RIGHT 46
+#define PRESS 49
 
 /********************* FILE OPERATION FUNCTIONS ***************/
 
@@ -37,7 +37,7 @@ static int __init driver_entry(void) {
 	// After creating cdev, add it to kernel
 	ret = cdev_add(mcdev, dev_num, 1);
 	if (ret < 0) {
-		printk(KERN_ALERT "button_driver: unable to add cdev to kernerl\n");
+		printk(KERN_ALERT "button_driver: unable to add cdev to kernel\n");
 		return ret;
 	}
 	
@@ -48,7 +48,7 @@ static int __init driver_entry(void) {
 	return 0;
 }
 
-// called up exit.
+// called up on exit.
 // unregisters the device and all associated gpios with it.
 static void __exit driver_exit(void) {
 	cdev_del(mcdev);
@@ -57,7 +57,7 @@ static void __exit driver_exit(void) {
 }
 
 // Called on device file open
-//	inode reference to file on disk, struct file represents an abstract
+// inode reference to file on disk, struct file represents an abstract
 // checks to see if file is already open (semaphore is in use)
 // prints error message if device is busy.
 int device_open(struct inode *inode, struct file* filp) {
@@ -73,7 +73,7 @@ int device_open(struct inode *inode, struct file* filp) {
 	gpio_request(RIGHT, "Right");
 	gpio_request(PRESS, "Press");
 
-	// Set all pins for output
+	// Sets all pins for output
 	gpio_direction_input(UP);
 	gpio_direction_input(DOWN);
 	gpio_direction_input(LEFT);
@@ -84,7 +84,7 @@ int device_open(struct inode *inode, struct file* filp) {
 }
 
 // Called upon close
-// closes device, clear display, free the GPIO pins, and returns access to semaphore.
+// closes device, frees the GPIO pins, and returns access to semaphore.
 int device_close(struct inode* inode, struct  file *filp) {
 	up(&virtual_device.sem);
 	gpio_free(UP);
@@ -95,20 +95,28 @@ int device_close(struct inode* inode, struct  file *filp) {
 	return 0;
 }
 
-// Called when user wants to get info from device file
+// Called when user wants to get state of the button input
+// Warning: calling read from this module without specifying the correct
+// number of bytes will result in no data being transferred
 ssize_t device_read(struct file* filp, char* bufStoreData, size_t bufCount, loff_t* curOffset) {
-	virtual_device.status[0] = (char) (gpio_get_value(UP) + '0');
-	virtual_device.status[1] = (char) (gpio_get_value(DOWN) + '0');
-	virtual_device.status[2] = (char) (gpio_get_value(LEFT) + '0');
-	virtual_device.status[3] = (char) (gpio_get_value(RIGHT) + '0');
-	virtual_device.status[4] = (char) (gpio_get_value(PRESS) + '0');
+	virtual_device.status[0] = !gpio_get_value(UP);
+	virtual_device.status[1] = !gpio_get_value(DOWN);
+	virtual_device.status[2] = !gpio_get_value(LEFT);
+	virtual_device.status[3] = !gpio_get_value(RIGHT);
+	virtual_device.status[4] = !gpio_get_value(PRESS);
 
-	return copy_to_user(bufStoreData, virtual_device.status, NUM_BUTTONS);
+	if (bufCount != (NUM_BUTTONS * sizeof(int)))
+		bufCount = 0;
+
+	return copy_to_user(bufStoreData, virtual_device.status, bufCount);
 }
 
 // Called when user wants to send info to device
 // Calling a shift register file
 ssize_t device_write(struct file* filp, const char* bufSource, size_t bufCount, loff_t* curOffset) {
-	return copy_from_user(virtual_device.data, bufSource, bufCount);
+	return copy_from_user(virtual_device.status, bufSource, bufCount);
 }
 
+MODULE_LICENSE("GPL"); // module license: required to use some functionalities.
+module_init(driver_entry); // declares which function runs on init.
+module_exit(driver_exit);  // declares which function runs on exit.
