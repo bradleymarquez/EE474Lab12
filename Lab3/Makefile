@@ -11,5 +11,7 @@ PWD = $(shell pwd)
 
 default:
 	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) modules
-clean:
-	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) clean
+buttonHero: buttonHero.c buttonHero.h
+	arm-linux-gnueabihf-gcc -o buttonHero buttonHero.c
+#clean:
+#	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) clean

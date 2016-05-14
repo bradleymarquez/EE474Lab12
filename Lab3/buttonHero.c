@@ -2,65 +2,10 @@
  * Brad Marquez, Joseph Rothlin, Aigerim Shintemirova
  * 11 / May / 2016
  *
- * TO DO:
- *  - clean code
- *  - comment code
- *  - create constants for integers used
- *  - lab report
- *
- *
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <time.h>
-#include <math.h>
-#include <signal.h>
+#include "buttonHero.h"
 
-#define SCREEN_SIZE 16 // total length of a line on the LCD screen
-#define WRONG_GUESSES 8 // has to be less than or equal to 8
-#define DELAY_TIME 1000 // time between each input update
-#define NEW_LCD_DIR "/dev/lcd_driver" // lcd driver directory
-#define NEW_BUT_DIR "/dev/button_driver" // button driver directory
-
-#define UP 0
-#define DOWN 1
-#define LEFT 2
-#define RIGHT 3
-#define PRESS 4
-#define NUM_BUTTONS 5
-
-// period of notes used in nanoseconds
-const int noteG = 2551020;
-const int noteAb = 2409639;
-const int noteA = 2272727;
-const int noteBb = 2145186;
-const int noteB = 2024783;
-const int noteC = 1912046;
-const int noteD = 1702620;
-const int noteE = 1517451;
-
-static int fd_lcd, fd_but;
-static FILE *sys2, *dirduty, *dirT;
-
-void pressAnyButton();
-int wantToQuit();
-int mygetch(void);
-void sigHandler(int);
-int printLose(int, int);
-void openPath(void);
-void instructions(void);
-void playGame(void);
-void buzzer(int, int);
-void loseMusic(void);
-void winMusic(void);
-void closeBuzzer(void);
 int main() {
 	signal(SIGINT, sigHandler);
 	openPath();
@@ -75,8 +20,6 @@ int main() {
 void playGame(){
 	srand(time(NULL));
 	int highScore = 0;
-	char cont[100];
-	cont[0] = ' ';
 	int quit = 0;
 	int inputs[NUM_BUTTONS] = {0, 0, 0, 0, 0};
 	
@@ -251,10 +194,6 @@ void playGame(){
 		quit = wantToQuit();
 		usleep(500000);
 	}
-	
-	// closes LCD/button dev files
-	close(fd_lcd);
-	close(fd_but);
 }
 
 // Plays sounds played on losing screen
@@ -286,9 +225,9 @@ void winMusic() {
 // Closes files associated with the buzzer
 void closeBuzzer() {
 	buzzer(0, 0);
-	fclose(sys2);
-	fclose(dirduty);
-	fclose(dirT);
+	if (sys2 != NULL) fclose(sys2);
+	if (dirduty != NULL) fclose(dirduty);
+	if (dirT != NULL) fclose(dirT);
 }
 
 // Plays given sound on the buzzer
@@ -359,12 +298,12 @@ int printLose(int currentScore, int highScore) {
 	return newHighScore;
 }
 
-// Sets the LCD/button to its off state if Ctrl+C (signal interrupt) is passed by the user
+// Sets the LCD/button and closes necessary files if the SIGINT signal is received
 void sigHandler(int signo) {
 	if (signo == SIGINT) {
 		closeBuzzer();
-		close(fd_lcd);
-		close(fd_but);
+		if (fd_lcd != 0) close(fd_lcd);
+		if (fd_but != 0) close(fd_but);
 		exit(0);
 	}
 }

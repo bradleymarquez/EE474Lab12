@@ -2,26 +2,14 @@
  * lcd_driver.c: holds a buffer of 100 characters as device file.
  *             prints out contents of buffer on read.
  *             writes over buffer values on write, writing to LCD screens.
+ *
+ * Brad Marquez
+ * Aigerim Shintemirova
+ * Joseph Rothlin
+ * 
  */
+
 #include "lcd_driver.h"
-#include <linux/gpio.h>
-#include <linux/delay.h>
-
-#define DATA_ 45
-#define LATCH_ 47
-#define CLOCK_ 67
-#define RS_ 68
-#define RW_ 44
-#define E_GAME 60
-#define E_SCORE 26
-
-#define CHAR_PER_LINE 16
-#define NUM_LINES 3
-
-#define GAME_SCREEN 0
-#define SCORE_SCREEN 1
-
-static int EArr[2] = {E_GAME, E_SCORE};
 
 /********************* FILE OPERATION FUNCTIONS ***************/
 

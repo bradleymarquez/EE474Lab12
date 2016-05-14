@@ -3,10 +3,12 @@
  *             data structures, global variables, and function prototypes
  *             used throughout this file.
  *
- * general rule:
- * global variables should be declared static,
- * including global variables within the file.
+ * Brad Marquez
+ * Aigerim Shintemirova
+ * Joseph Rothlin
+ *
  */
+
 #ifndef BUTTON_DRIVER_H_
 #define BUTTON_DRIVER_H_
  
@@ -17,6 +19,14 @@
 #include <linux/semaphore.h>
 #include <asm/uaccess.h>
 #include <linux/unistd.h>
+#include <linux/gpio.h>
+#include <linux/delay.h>
+
+#define UP 65
+#define DOWN 48
+#define LEFT 20
+#define RIGHT 46
+#define PRESS 49
 
 #define DEVICE_NAME "button_driver"
 

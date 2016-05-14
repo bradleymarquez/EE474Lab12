@@ -2,16 +2,14 @@
  * button_driver.c: holds a buffer of 100 characters as device file.
  *             returns contents of buffer (button input) on read.
  *             writes over buffer values on write.
+ *
+ * Brad Marquez
+ * Aigerim Shintemirova
+ * Joseph Rothlin
+ *
  */
-#include "button_driver.h"
-#include <linux/gpio.h>
-#include <linux/delay.h>
 
-#define UP 65
-#define DOWN 48
-#define LEFT 20
-#define RIGHT 46
-#define PRESS 49
+#include "button_driver.h"
 
 /********************* FILE OPERATION FUNCTIONS ***************/
 
@@ -48,8 +46,7 @@ static int __init driver_entry(void) {
 	return 0;
 }
 
-// called up on exit.
-// unregisters the device and all associated gpios with it.
+// called up on exit, unregisters the device.
 static void __exit driver_exit(void) {
 	cdev_del(mcdev);
 	unregister_chrdev_region(dev_num, 1);
