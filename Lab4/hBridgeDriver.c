@@ -6,7 +6,7 @@
  *  
  */
 
-static FILE* sys, sys2, PWMA_T, PWMA_DUTY, PWMB_T, PWMA_DUTY, RS_VAL, RW_VAL, SER_DATA_VAL;
+static FILE* sys, sys2, PWMA_T, PWMA_DUTY, PWMB_T, PWMA_DUTY, RS_VAL, RW_VAL, SER_DATA_VAL, RS_dir, RW_dir, SER_dir;
 
 // CHANGE THESE
 #define RS_ 48 // RS Pin - GPIO_PIN_48
@@ -16,8 +16,14 @@ static FILE* sys, sys2, PWMA_T, PWMA_DUTY, PWMB_T, PWMA_DUTY, RS_VAL, RW_VAL, SE
 #define LATCH_
 
 void pointSetup(void);
+void closePointers(void);
+void setOut(FILE*);
+void changePWMA(int, int);
+void changePWMB(int, int);
+void command(unsigned char);
 int main(){
 	pointSetup();
+	closePointers();
 	return 0;
 }
 
@@ -40,26 +46,40 @@ void pointSetup(){
 	
 	sys2 = fopen("/sys/class/gpio/export", "w");
 	fseek(sys2, 0, SEEK_SET);
-	FILE * RS_dir, RW_dir, SER_dir;
 	
 	RS_dir = fopen("/sys/class/gpio/gpio48/direction", "w"); // change directory
-	fseek(RS_dir, 0, SEEK_SET);
-	fprintf(RS_dir, "%s", "out");
-	fflush(RS_dir);
+	setOut(RS_dir);
 	
 	RW_dir = fopen("/sys/class/gpio/gpio48/direction", "w"); // change directory
-	fseek(RW_dir, 0, SEEK_SET);
-	fprintf(RW_dir, "%s", "out");
-	fflush(RW_dir);
+	setOut(RW_dir);
 	
 	SER_dir = fopen("/sys/class/gpio/gpio48/direction", "w"); // change directory
-	fseek(SER_dir, 0, SEEK_SET);
-	fprintf(SER_dir, "%s", "out");
-	fflush(SER_dir);
+	setOut(SER_dir);
 	
 	RS_VAL = fopen("/sys/class/gpio/gpio48/value", "w"); // change directory
 	RW_VAL = fopen("/sys/class/gpio/gpio48/value", "w"); // change directory
 	SER_DATA_VAL = fopen("/sys/class/gpio/gpio48/value", "w"); // change directory
+}
+
+void closePointers() {
+	fclose(sys);
+	fclose(sys2);
+	fclose(PWMA_T);
+	fclose(PWMA_DUTY);
+	fclose(PWMB_T);
+	fclose(PWMA_DUTY);
+	fclose(RS_VAL);
+	fclose(RW_VAL);
+	fclose(SER_DATA_VAL);
+	fclose(RS_dir);
+	fclose(RW_dir);
+	fclose(SER_dir);
+}
+
+void setOut(FILE *dir) {
+	fseek(dir, 0, SEEK_SET);
+	fprintf(dir, "%s", "out");
+	fflush(dir);
 }
 
 void changePWMA(int duty, int period) {
