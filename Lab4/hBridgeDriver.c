@@ -7,10 +7,13 @@
  */
 
 static FILE* sys, sys2, PWMA_T, PWMA_DUTY, PWMB_T, PWMA_DUTY, RS_VAL, RW_VAL, SER_DATA_VAL;
+
 // CHANGE THESE
-#define RS 48 // RS Pin - GPIO_PIN_48
-#define RW 49 // RW Pin - GPIO_PIN_49
-#define SER_DATA 67 // PIN
+#define RS_ 48 // RS Pin - GPIO_PIN_48
+#define RW_ 49 // RW Pin - GPIO_PIN_49
+#define SER_DATA_ 67 // PIN
+#define RS_CLOCK_ 69
+#define LATCH_
 
 void pointSetup(void);
 int main(){
@@ -73,87 +76,33 @@ void changePWMB(int duty, int period) {
 	fflush(PWMB_T);
 }
 
+// NEED ORDER OF PINS FROM SHIFT REGISTER TO H-BRIDGE
+// calculate command num for drive forward, turn left, turn right, stop, cruise, etc.
 void command(unsigned char num) {
-	fprintf(value[DB0], "%d", (byte % 2));
-	fflush(value[DB0]);
-	byte  = byte >> 1;
-	fprintf(value[DB1], "%d", (byte % 2));
-	fflush(value[DB1]);
-	byte  = byte >> 1;
-	fprintf(value[DB2], "%d", (byte % 2));
-	fflush(value[DB2]);
-	byte  = byte >> 1;
-	fprintf(value[DB3], "%d", (byte % 2));
-	fflush(value[DB3]);
-	byte  = byte >> 1;
-	fprintf(value[DB4], "%d", (byte % 2));
-	fflush(value[DB4]);
-	byte  = byte >> 1;
-	fprintf(value[DB5], "%d", (byte % 2));
-	fflush(value[DB5]);
-	byte  = byte >> 1;
-	fprintf(value[DB6], "%d", (byte % 2));
-	fflush(value[DB6]);
-	byte  = byte >> 1;
-	fprintf(value[DB7], "%d", (byte % 2));
-	fflush(value[DB7]);
-}
-/*
-// Loads and sends data into and from the shift register
-void setBus(unsigned char num) {
-	int i = 7;
-	int j = 0;
+	int i = 0;
+	int j = 7;
 	int input[8];
 	int temporary = num;
 
 	// Building the binary version of num
-	while (j < 8) {
-		binary[j] = temporary % 2;
+	while (i < 8) {
+		input[i] = temporary % 2;
 		temporary = temporary >> 1;
-		j++;
+		i++;
 	}
-
+	
 	// Inserting binary value into shift register
-	while (i >= 0) {
-		gpio_set_value(DATA_, binary[i]);  // Set the data line to the next value
+	while (j >= 0) {
+		fprintf(SER_DATA_VAL, "%d", input[j]);
 
 		// Toggle the clock
-		gpio_set_value(CLOCK_, 1);		
+		fprintf(RS_CLOCK_, "%d", 1);		
 		udelay(10);
-		gpio_set_value(CLOCK_, 0);
+		fprintf(RS_CLOCK_, "%d", 0);
 		i--;
 	}
 	
-	// Toggle the latch
-	gpio_set_value(LATCH_, 1);
+	fprintf(LATCH_, "%d", 1);
 	udelay(50);
-	gpio_set_value(LATCH_, 0);
-
-}*/
-
-/*// Sets DB7 to DB0 to the given 8 bits
-void setBus(unsigned char byte) {
-	fprintf(value[DB0], "%d", (byte % 2));
-	fflush(value[DB0]);
-	byte  = byte >> 1;
-	fprintf(value[DB1], "%d", (byte % 2));
-	fflush(value[DB1]);
-	byte  = byte >> 1;
-	fprintf(value[DB2], "%d", (byte % 2));
-	fflush(value[DB2]);
-	byte  = byte >> 1;
-	fprintf(value[DB3], "%d", (byte % 2));
-	fflush(value[DB3]);
-	byte  = byte >> 1;
-	fprintf(value[DB4], "%d", (byte % 2));
-	fflush(value[DB4]);
-	byte  = byte >> 1;
-	fprintf(value[DB5], "%d", (byte % 2));
-	fflush(value[DB5]);
-	byte  = byte >> 1;
-	fprintf(value[DB6], "%d", (byte % 2));
-	fflush(value[DB6]);
-	byte  = byte >> 1;
-	fprintf(value[DB7], "%d", (byte % 2));
-	fflush(value[DB7]);
-}*/
+	fprintf(LATCH_, "%d", 0);
+}
