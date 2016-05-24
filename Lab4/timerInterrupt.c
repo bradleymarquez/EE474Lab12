@@ -1,3 +1,13 @@
+/* timerInterrupt.c
+ * Brad Marquez, Joseph Rothlin, Aigerim Shintemirova
+ * 24 / May / 2016
+ *
+ *	TODO:
+ *  - Send signal to master program
+ *  - Figure out how timer interrupts work in general
+ *  
+ */
+ 
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>

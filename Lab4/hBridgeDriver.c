@@ -1,8 +1,13 @@
-/*	ledinit.c
+/*	hBridgeDriver.c
  * Brad Marquez, Joseph Rothlin, Aigerim Shintemirova
- * 22 / April / 2016
+ * 24 / May / 2016
  *
- *	
+ *	TODO:
+ *  - Receive Signal from slave timerinterrupt.cabs
+ *  - Automatically stop when timerinterrupt sends signal
+ *  - Some kind of control system (button + bluetooth???)
+ *  - Change directories of GPIO pins/ PWM pins/
+ *  - Figure out hex commands for each motor action
  *  
  */
 
