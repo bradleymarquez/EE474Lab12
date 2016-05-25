@@ -5,9 +5,9 @@
  *	TODO:
  *  - Send signal to master program
  *  - Figure out how timer interrupts work in general
- *  
+ *
  */
- 
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -30,62 +30,19 @@
 #define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \
                                } while (0)
 
-static FILE* avalFront;
-static FILE* avalBack;
-static FILE* avalLeft;
-static FILE* avalRight;
-static int counter;
-static int valFront;
-static int valBack;
-static int valLeft;
-static int valRight;
-/*static void print_siginfo(siginfo_t *si)
-       {
-           timer_t *tidp;
-           int or;
-
-           tidp = si->si_value.sival_ptr;
-
-           printf("    sival_ptr = %p; ", si->si_value.sival_ptr);
-           printf("    *sival_ptr = 0x%lx\n", (long) *tidp);
-
-           or = timer_getoverrun(*tidp);
-           if (or == -1)
-               errExit("timer_getoverrun");
-           else
-               printf("    overrun count = %d\n", or);
-       }*/
+FILE *avalFront, *avalBack, *avalLeft, *avalRight;
+int valFront, valBack, valLeft, valRight, counter, doneWaiting,
+    valuesOfFront, valuesOfLeft, valuesOfBack, valuesOfRight;
 
 static void handler(int sig, siginfo_t *si, void *uc)
-       {
-           /* Note: calling printf() from a s	ignal handler is not
-              strictly correct, since printf() is not async-signal-safe;
-              see signal(7) */
+{
+    avalFront = fopen("/sys/bus/iio/devices/iio:device0/in_voltage0_raw", "r"); // front
+	avalLeft = fopen("/sys/bus/iio/devices/iio:device0/in_voltage6_raw", "r"); // left
+	avalRight = fopen("/sys/bus/iio/devices/iio:device0/in_voltage2_raw", "r"); // right
+	avalBack = fopen("/sys/bus/iio/devices/iio:device0/in_voltage4_raw", "r"); // back
 
-            //printf("Caught signal %d\n", sig);
-           //print_siginfo(si);
-           //signal(sig, SIG_IGN);
 
-	if (counter == 9) {
-		//if (valFront < threshold || valFront > threshold) {
-			// send front interrupt
-		//}
-		//if (valBack < threshold || valBack > threshold) {
-			// send back interrupt
-		//}
-		//if (valLeft < threshold || valLeft > threshold) {
-			// send left interrupt
-		//}
-		//if (valRight < threshold || valRight > threshold) {
-			// send right interrupt
-		//}
-		valFront = 0;
-		valBack = 0;
-		valLeft = 0;
-		valRight = 0;
-	}
-
-	int tempFront, tempBack, tempLeft, tempRight;
+	/*int tempFront, tempBack, tempLeft, tempRight;
 	fseek(avalFront,0,SEEK_SET);
 	fseek(avalBack,0,SEEK_SET);
 	fseek(avalLeft,0,SEEK_SET);
@@ -102,12 +59,114 @@ static void handler(int sig, siginfo_t *si, void *uc)
 		valBack = (valBack + tempBack) / counter;
 		valLeft = (valLeft + tempLeft) / counter;
 		valRight = (valRight + tempRight) / counter;
-	}
+	}*/
+
+        valuesOfFront += valFront;
+        valuesOfLeft += valLeft;
+		valuesOfRight += valRight;
+		valuesOfBack += valBack;
+
+		counter = counter + 1;
+
+		//renew signal
+		doneWaiting = 1;
 }
 
-int main(int argc, char *argv[])
-       {
-           timer_t timerid;
+int main(int argc, char *argv[]) {
+
+    FILE *sys, *dir, *PWMA, *AIN2, *AIN1, *STBY, *BIN1, *BIN2, *PWMB;
+
+	//analog reading setup
+	FILE *ain,*aval,*aval1;
+	int value,value1,i, j;
+
+	ain = fopen("/sys/devices/bone_capemgr.9/slots", "w");
+	fseek(ain,0,SEEK_SET);
+	fprintf(ain,"cape-bone-iio");
+	fflush(ain);
+
+	//motor setup
+	sys = fopen("/sys/class/gpio/export", "w");
+	fseek(sys, 0, SEEK_SET);
+
+	fprintf(sys, "%d", GPIO_PIN_PWMA);
+	fflush(sys);
+
+	fprintf(sys, "%d", GPIO_PIN_AIN2);
+	fflush(sys);
+
+	fprintf(sys, "%d", GPIO_PIN_AIN1);
+	fflush(sys);
+
+	fprintf(sys, "%d", GPIO_PIN_STBY);
+	fflush(sys);
+
+	fprintf(sys, "%d", GPIO_PIN_BIN1);
+	fflush(sys);
+
+	fprintf(sys, "%d", GPIO_PIN_BIN2);
+	fflush(sys);
+
+	fprintf(sys, "%d", GPIO_PIN_PWMB);
+	fflush(sys);
+
+	dir = fopen("/sys/class/gpio/gpio1/direction", "w");
+	fseek(dir, 0, SEEK_SET);
+	fprintf(dir, "%s", "out");
+	fflush(dir);
+
+	dir = fopen("/sys/class/gpio/gpio2/direction", "w");
+	fseek(dir, 0, SEEK_SET);
+	fprintf(dir, "%s", "out");
+	fflush(dir);
+
+	dir = fopen("/sys/class/gpio/gpio3/direction", "w");
+	fseek(dir, 0, SEEK_SET);
+	fprintf(dir, "%s", "out");
+	fflush(dir);
+
+	dir = fopen("/sys/class/gpio/gpio4/direction", "w");
+	fseek(dir, 0, SEEK_SET);
+	fprintf(dir, "%s", "out");
+	fflush(dir);
+
+	dir = fopen("/sys/class/gpio/gpio5/direction", "w");
+	fseek(dir, 0, SEEK_SET);
+	fprintf(dir, "%s", "out");
+	fflush(dir);
+
+	dir = fopen("/sys/class/gpio/gpio6/direction", "w");
+	fseek(dir, 0, SEEK_SET);
+	fprintf(dir, "%s", "out");
+	fflush(dir);
+
+	dir = fopen("/sys/class/gpio/gpio7/direction", "w");
+	fseek(dir, 0, SEEK_SET);
+	fprintf(dir, "%s", "out");
+	fflush(dir);
+
+	PWMA = fopen("/sys/class/gpio/gpio1/value", "w");
+	fseek(PWMA, 0, SEEK_SET);
+
+	AIN2 = fopen("/sys/class/gpio/gpio2/value", "w");
+	fseek(AIN2, 0, SEEK_SET);
+
+	AIN1 = fopen("/sys/class/gpio/gpio3/value", "w");
+	fseek(AIN1, 0, SEEK_SET);
+
+	STBY = fopen("/sys/class/gpio/gpio4/value", "w");
+	fseek(STBY, 0, SEEK_SET);
+
+	BIN1 = fopen("/sys/class/gpio/gpio5/value", "w");
+	fseek(BIN1, 0, SEEK_SET);
+
+	BIN2 = fopen("/sys/class/gpio/gpio6/value", "w");
+	fseek(BIN2, 0, SEEK_SET);
+
+	PWMB = fopen("/sys/class/gpio/gpio7/value", "w");
+	fseek(PWMB, 0, SEEK_SET);
+
+    timer_t timerid;
            struct sigevent sev;
            struct itimerspec its;
            long long freq_nanosecs;
@@ -119,12 +178,8 @@ int main(int argc, char *argv[])
                        argv[0]);
                exit(EXIT_FAILURE);
            }
-		
-	   avalFront = fopen("/sys/bus/iio/devices/iio:device0/in_voltage0_raw", "r"); // front
-	   avalLeft = fopen("/sys/bus/iio/devices/iio:device0/in_voltage6_raw", "r"); // left
-	   avalRight = fopen("/sys/bus/iio/devices/iio:device0/in_voltage2_raw", "r"); // right
-	   avalBack = fopen("/sys/bus/iio/devices/iio:device0/in_voltage4_raw", "r"); // back           
-	   
+
+
 	   /* Establish handler for timer signal */
 
            printf("Establishing handler for signal %d\n", SIG);
@@ -176,10 +231,115 @@ int main(int argc, char *argv[])
            if (sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1)
                errExit("sigprocmask");
 
-           exit(EXIT_SUCCESS);
-	   fclose(avalFront);
-	   fclose(avalLeft);
-	   fclose(avalRight);
-	   fclose(avalBack);
-       }
+    // while loop for time interrupt/enable signal
+    while(1)
+	{
+		doneWaiting = 0; //waiting for the enable
+		for(i = 0; i<90000000; i++);	//go off ~three times a second
 
+		valFront = valuesOfFront/counter;
+		valLeft = valuesOfLeft/counter;
+		valRight = valuesOfRight/counter;
+		valBack = valuesOfBack/counter;
+
+		printf("frontValue: %d\n",valFront);
+		printf("leftValue: %d\n",valLeft);
+		printf("rightValue: %d\n",valRight);
+		printf("backValue: %d\n",valBack);
+		printf("timesExpired: %d\n",counter);
+
+		counter = 0;
+		valuesOfFront = 0;
+		valuesOfLeft = 0;
+		valuesOfRight = 0;
+		valuesOfBack = 0;
+
+		/*if (frontValue > 3200) {	//front sensor is close, so back up
+
+			fprintf(PWMA, "%d", 1);
+			fflush(PWMA);
+			fprintf(STBY, "%d", 1);
+			fflush(STBY);
+
+			fprintf(PWMB, "%d", 1);
+			fflush(PWMB);
+
+			fprintf(AIN1, "%d", 0);
+			fflush(AIN1);
+			fprintf(AIN2, "%d", 1);
+			fflush(AIN2);
+
+			fprintf(BIN1, "%d", 1);
+			fflush(BIN1);
+			fprintf(BIN2, "%d", 0);
+			fflush(BIN2);
+
+		} else if (leftValue > 3200) {	//left sensor is close, so turn right
+
+			fprintf(PWMA, "%d", 1);
+			fflush(PWMA);
+			fprintf(STBY, "%d", 1);
+			fflush(STBY);
+
+			fprintf(PWMB, "%d", 1);
+			fflush(PWMB);
+
+			fprintf(AIN1, "%d", 1);
+			fflush(AIN1);
+			fprintf(AIN2, "%d", 0);
+			fflush(AIN2);
+
+			fprintf(BIN1, "%d", 1);
+			fflush(BIN1);
+			fprintf(BIN2, "%d", 0);
+			fflush(BIN2);
+
+
+		} else if (rightValue > 3200) {	//left sensor is close, so turn right
+
+			fprintf(PWMA, "%d", 1);
+			fflush(PWMA);
+			fprintf(STBY, "%d", 1);
+			fflush(STBY);
+
+			fprintf(PWMB, "%d", 1);
+			fflush(PWMB);
+
+
+			fprintf(AIN1, "%d", 0);
+			fflush(AIN1);
+			fprintf(AIN2, "%d", 1);
+			fflush(AIN2);
+
+			fprintf(BIN1, "%d", 0);
+			fflush(BIN1);
+			fprintf(BIN2, "%d", 1);
+			fflush(BIN2);
+
+		} else {	//go forward
+			fprintf(AIN1, "%d", 1);
+			fflush(AIN1);
+			fprintf(AIN2, "%d", 0);
+			fflush(AIN2);
+			fprintf(PWMA, "%d", 1);
+			fflush(PWMA);
+			fprintf(STBY, "%d", 1);
+			fflush(STBY);
+
+			fprintf(BIN1, "%d", 0);
+			fflush(BIN1);
+			fprintf(BIN2, "%d", 1);
+			fflush(BIN2);
+			fprintf(PWMB, "%d", 1);
+			fflush(PWMB);
+		}
+
+	}
+*/
+    exit(EXIT_SUCCESS);
+	fclose(avalFront);
+	fclose(avalLeft);
+	fclose(avalRight);
+	fclose(avalBack);
+       }
+       }
