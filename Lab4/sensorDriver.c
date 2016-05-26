@@ -10,6 +10,7 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdbool.h>
 
 #define FRONT 0
 #define BACK 1
@@ -17,7 +18,7 @@
 #define RIGHT 3
 #define NUM_SENSORS 4
 #define SAMPLES 20
-#define SAMPLE_RATE 800000
+#define SAMPLE_RATE 50000
 #define MIN_DIST 2000
 
 typedef struct sensor_sample_struct {
@@ -33,11 +34,13 @@ struct sigaction sa;
 struct itimerval timer;
 char *path = "/tmp/sensor";
 int fifo_fd;
+bool filesOpen = false;
 
 void timer_Init();
 void timer_handler(int sig);
 void closeDown(int signo);
 void closeFiles();
+void openFiles();
 
 int main(int argc, char **argv) {
 	signal(SIGINT, closeDown);
@@ -45,20 +48,6 @@ int main(int argc, char **argv) {
 
 	if (system("echo cape-bone-iio > /sys/devices/bone_capemgr.9/slots") == -1) {
 		printf("Error creating ADC files\n");
-		return 1;
-	}
-
-	// Setup sensor files
-	sensor.files[BACK] = fopen("/sys/bus/iio/devices/iio:device0/in_voltage0_raw", "r");
-	sensor.files[FRONT] = fopen("/sys/bus/iio/devices/iio:device0/in_voltage6_raw", "r");
-	sensor.files[LEFT] = fopen("/sys/bus/iio/devices/iio:device0/in_voltage2_raw", "r");
-	sensor.files[RIGHT] = fopen("/sys/bus/iio/devices/iio:device0/in_voltage4_raw", "r");
-
-	if (sensor.files[FRONT] == NULL ||
-	    sensor.files[LEFT] == NULL ||
-	    sensor.files[RIGHT] == NULL ||
-	    sensor.files[BACK] == NULL) {
-		printf("Error opening ADC pins %s\n", strerror(errno));
 		return 1;
 	}
 
@@ -102,14 +91,16 @@ void timer_Init() {
 
 // Timer interrupt handler
 void timer_handler(int sig) {
+	openFiles();
 	int i;
 	char oldStatus[4];
 	for (i = 0; i < NUM_SENSORS; i++) {
 		int pinValue;
+		int ret;
 		fseek(sensor.files[i], 0, SEEK_SET);
-		fscanf(sensor.files[i], "%d", &pinValue);
-		printf("i: %d, pinValue: %d\n", i, pinValue);
-		fflush(stdout);		
+		if (fscanf(sensor.files[i], "%d", &pinValue) != 1) {
+			printf("Error with fscanf\n");
+		}	
 		sensor.average[i] -= sensor.sample_space[i][sensor.sample_i % SAMPLES] / SAMPLES;
 		sensor.average[i] += pinValue / SAMPLES;
 		sensor.sample_space[i][sensor.sample_i % SAMPLES] = pinValue;
@@ -129,23 +120,47 @@ void timer_handler(int sig) {
 
 		// Send signal to master program that we have written to the named pipe
 		// which means the sensor status values have changed
-		if (system("pkill --signal SIGUSR1 sensorDriverTest") == -1) {
+		if (system("pkill --signal SIGUSR1 sensorDriverTes") == -1) {
 			printf("Error sending SIGUSR1\n");
 		}
 	}
 	sensor.sample_i++;
+	closeFiles();
 }
 
 void closeDown(int signo) {
-	unlink(path);
-	closeFiles();
-	exit(EXIT_SUCCESS);
+	if (signo == SIGINT) {
+		unlink(path);
+		closeFiles();
+		exit(EXIT_SUCCESS);
+	}
 }
 
 void closeFiles() {
-	int i;
-	for (i = 0; i < NUM_SENSORS; i++) {
-		fclose(sensor.files[i]);
+	if (filesOpen) {
+		int i;
+		for (i = 0; i < NUM_SENSORS; i++) {
+			fclose(sensor.files[i]);
+		}
+		filesOpen = false;
+	}
+}
+
+void openFiles() {
+	// Setup sensor files
+	filesOpen = true;
+	sensor.files[BACK] = fopen("/sys/bus/iio/devices/iio:device0/in_voltage0_raw", "r");
+	sensor.files[FRONT] = fopen("/sys/bus/iio/devices/iio:device0/in_voltage6_raw", "r");
+	sensor.files[LEFT] = fopen("/sys/bus/iio/devices/iio:device0/in_voltage2_raw", "r");
+	sensor.files[RIGHT] = fopen("/sys/bus/iio/devices/iio:device0/in_voltage4_raw", "r");
+
+	if (sensor.files[FRONT] == NULL ||
+	    sensor.files[LEFT] == NULL ||
+	    sensor.files[RIGHT] == NULL ||
+	    sensor.files[BACK] == NULL) {
+		printf("Error opening ADC pins %s\n", strerror(errno));
+		unlink(path);
+		exit(EXIT_FAILURE);
 	}
 }
 
