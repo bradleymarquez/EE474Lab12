@@ -40,7 +40,8 @@ void goRight(void);
 void goBackward(void);
 void goStop(void);
 int main(){
-	signal(SIGUSR1, handler);	
+	signal(SIGUSR1, handler);
+	signal(SIGINT, close);
 	pointSetup();
 	goForward();
 	while (1) { // autodrive
@@ -81,6 +82,7 @@ void goStop() {
 
 void close(int signo) {
 	if (signo == SIGINT) {
+	system("pkill --signal SIGINT sensorDriver");
 	changePWMA(0, 1); // stop
 	changePWMB(0, 1); // stop
 	closePointers();
