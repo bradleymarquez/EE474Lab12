@@ -69,6 +69,7 @@ static void handler(int sig, siginfo_t *si, void *uc)
 		counter = counter + 1;
 
 		//renew signal
+		signal(sig, handler);
 		doneWaiting = 1;
 }
 
