@@ -22,7 +22,6 @@ static FILE* sys, sys2, PWMA_T, PWMA_DUTY, PWMB_T, PWMA_DUTY, SER_DATA_VAL, SR_C
 #define RIGHT 3
 #define NUM_SENSORS 4
 #define PWM_PERIOD 1000
-#include "sensorDriver.h"
 
 char *path = "/root/sensor";
 
