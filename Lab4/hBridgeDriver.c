@@ -21,7 +21,7 @@ static FILE* sys, sys2, PWMA_T, PWMA_DUTY, PWMB_T, PWMA_DUTY, SER_DATA_VAL, SR_C
 #define LEFT 2
 #define RIGHT 3
 #define NUM_SENSORS 4
-
+#define PWM_PERIOD 1000
 #include "sensorDriver.h"
 
 char *path = "/root/sensor";
@@ -43,7 +43,7 @@ int main(){
 	signal(SIGUSR1, handler);	
 	pointSetup();
 	goForward();
-	while (1) {
+	while (1) { // autodrive
 	}
 	closePointers();
 	return 0;
@@ -51,32 +51,32 @@ int main(){
 
 void goForward() {
 	command(0x15);
-	changePWMA(500, 1000);
-	changePWMB(500, 1000);
+	changePWMA(PWM_PERIOD / 2, PWM_PERIOD);
+	changePWMB(PWM_PERIOD / 2, PWM_PERIOD);
 }
 
 void goBackward() {
 	command(0xB);
-	changePWMA(500, 1000);
-	changePWMB(500, 1000);
+	changePWMA(PWM_PERIOD / 2, PWM_PERIOD);
+	changePWMB(PWM_PERIOD / 2, PWM_PERIOD);
 }
 
 void goLeft() {
 	command(0x1D);
-	changePWMA(500, 1000);
-	changePWMB(100, 1000);
+	changePWMA(PWM_PERIOD / 2, PWM_PERIOD);
+	changePWMB(PWM_PERIOD / 10, PWM_PERIOD);
 }
 
 void goRight() {
 	command(0x17);
-	changePWMA(100, 1000);
-	changePWMB(500, 1000);
+	changePWMA(PWM_PERIOD / 10, PWM_PERIOD);
+	changePWMB(PWM_PERIOD / 2, PWM_PERIOD);
 }
 
 void goStop() {
 	command(0x01);
-	changePWMA(1000, 1000);
-	changePWMB(1000, 1000);
+	changePWMA(PWM_PERIOD, PWM_PERIOD);
+	changePWMB(PWM_PERIOD, PWM_PERIOD);
 }
 
 void close(int signo) {
@@ -97,7 +97,8 @@ void handler(int signo) {
 			return -1;
 		}
 		
-		/*// probably uneccessary
+		// probably uneccessary
+		/*
 		ssize_t bytesread = 0;
 		int bytes = 0;
 		char readSensor[NUM_SENSORS];
@@ -116,41 +117,55 @@ void handler(int signo) {
 		char readSensor[NUM_SENSORS];
 		read(fd, readSensor, NUM_SENSORS);
 		
-		//
+		// Sensor interrupt behavior
 		switch(readSensor) {
-			case('0000'):
+			case('0000'): // no sensors are high
 				goForward();
 				break;
-			case('0001'):
-				
+			case('0001'): // right is high
+				goLeft();
 				break;
-			case('0010'):
+			case('0010'): // left is high
+				goRight();
 				break;
-			case('0011'):
+			case('0011'): // left and right are high
+				goForward();
 				break;
-			case('0100'):
+			case('0100'): // back is high
+				goRight();
 				break;
-			case('0101'):
+			case('0101'): // back and right are high
+				goLeft();
 				break;
-			case('0110'):
+			case('0110'): // back and left are high
+				goForward();
 				break;
-			case('0111'):
+			case('0111'): // back, left, and right are high
+				goForward();
 				break;
-			case('1000'):
+			case('1000'): // front is high
+				goBack();
 				break;
-			case('1001'):
+			case('1001'): // front and right are high
+				goLeft();
 				break;
-			case('1010'):
+			case('1010'): // front and left are high
+				goRight();
 				break;
-			case('1011'):
+			case('1011'): // front, left, and right are high
+				goRight();
 				break;
-			case('1100'):
+			case('1100'): // front and back are high
+				goLeft();
 				break;
-			case('1101'):
+			case('1101'): // front, back, and right are high
+				goLeft();
 				break;
-			case('1110'):
+			case('1110'): // front, back, and left are high
+				goRight();
 				break;
-			case('1111'):
+			case('1111'): // all are high
+				goStop();
 				break;
 		}
 	}
