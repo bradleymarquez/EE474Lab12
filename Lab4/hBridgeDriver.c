@@ -11,14 +11,20 @@
  *  
  */
 
-static FILE* sys, sys2, PWMA_T, PWMA_DUTY, PWMB_T, PWMA_DUTY, RS_VAL, RW_VAL, SER_DATA_VAL, RS_dir, RW_dir, SER_dir;
+static FILE* sys, sys2, PWMA_T, PWMA_DUTY, PWMB_T, PWMA_DUTY, SER_DATA_VAL, SR_CLOCK_VAL, LATCH_VAL, SER_dir, SR_dir, LATCH_dir;
 
-// CHANGE THESE
-#define RS_ 48 // RS Pin - GPIO_PIN_48
-#define RW_ 49 // RW Pin - GPIO_PIN_49
-#define SER_DATA_ 67 // PIN
-#define RS_CLOCK_ 69
-#define LATCH_
+#define SER_DATA_ 45 // PIN
+#define SR_CLOCK_ 66
+#define LATCH_ 69
+#define FRONT 0
+#define BACK 1
+#define LEFT 2
+#define RIGHT 3
+#define NUM_SENSORS 4
+
+#include "sensorDriver.h"
+
+char *path = "/root/sensor";
 
 void pointSetup(void);
 void closePointers(void);
@@ -26,44 +32,161 @@ void setOut(FILE*);
 void changePWMA(int, int);
 void changePWMB(int, int);
 void command(unsigned char);
+void close(int);
+void handler(int);
+void goForward(void);
+void goLeft(void);
+void goRight(void);
+void goBackward(void);
+void goStop(void);
 int main(){
+	signal(SIGUSR1, handler);	
 	pointSetup();
+	goForward();
+	while (1) {
+	}
 	closePointers();
 	return 0;
 }
 
+void goForward() {
+	command(0x15);
+	changePWMA(500, 1000);
+	changePWMB(500, 1000);
+}
+
+void goBackward() {
+	command(0xB);
+	changePWMA(500, 1000);
+	changePWMB(500, 1000);
+}
+
+void goLeft() {
+	command(0x1D);
+	changePWMA(500, 1000);
+	changePWMB(100, 1000);
+}
+
+void goRight() {
+	command(0x17);
+	changePWMA(100, 1000);
+	changePWMB(500, 1000);
+}
+
+void goStop() {
+	command(0x01);
+	changePWMA(1000, 1000);
+	changePWMB(1000, 1000);
+}
+
+void close(int signo) {
+	if (signo == SIGINT) {
+	changePWMA(0, 1); // stop
+	changePWMB(0, 1); // stop
+	closePointers();
+	}
+}
+
+void handler(int signo) {
+	if (signo == SIGUSR1) {
+		// Creates pipe
+		printf("Opening pipe\n");
+		int fd = open(path, O_RDWR);
+		if (fd == -1) {
+			printf("Error open: %s\n", strerror(errno));
+			return -1;
+		}
+		
+		/*// probably uneccessary
+		ssize_t bytesread = 0;
+		int bytes = 0;
+		char readSensor[NUM_SENSORS];
+		while (bytesread < NUM_SENSORS) {
+			bytes = read(fd, readSensor, NUM_SENSORS);
+			if (bytes == -1) {
+				if (errno != EINTR) {
+					printf("Error on read: %s\n", strerror(errno));
+					return -1;
+				}
+				continue;
+			}
+			bytesread += bytes;
+		}*/
+		
+		char readSensor[NUM_SENSORS];
+		read(fd, readSensor, NUM_SENSORS);
+		
+		//
+		switch(readSensor) {
+			case('0000'):
+				goForward();
+				break;
+			case('0001'):
+				
+				break;
+			case('0010'):
+				break;
+			case('0011'):
+				break;
+			case('0100'):
+				break;
+			case('0101'):
+				break;
+			case('0110'):
+				break;
+			case('0111'):
+				break;
+			case('1000'):
+				break;
+			case('1001'):
+				break;
+			case('1010'):
+				break;
+			case('1011'):
+				break;
+			case('1100'):
+				break;
+			case('1101'):
+				break;
+			case('1110'):
+				break;
+			case('1111'):
+				break;
+		}
+	}
+}
+
 void pointSetup(){
 	sys = fopen("/sys/devices/bone_capemgr.9/slots", "w");
-	fseek(sysA, 0, SEEK_END);
-	fprintf(sysA, "am33xx_pwm");
-	fflush(sysA);
-	fprintf(sysA, "bone_pwm_P9_14"); // need to change???
+	fseek(sys, 0, SEEK_END);
+	fprintf(sys, "am33xx_pwm");
+	fflush(sys);
+	fprintf(sys, "bone_pwm_P9_14");
+	fflush(sys);
+	fprintf(sys, "bone_pwm_P9_16");
 	fflush(sys);
 	
-	PWMA_DUTY = fopen("/sys/devices/ocp.3/pwm_test_P9_14.15/duty", "w"); // change directory
-	PWMA_T = fopen("/sys/devices/ocp.3/pwm_test_P9_14.15/period", "w"); // change directory
+	PWMA_DUTY = fopen("/sys/devices/ocp.3/pwm_test_P9_14.15/duty", "w");
+	PWMA_T = fopen("/sys/devices/ocp.3/pwm_test_P9_14.15/period", "w");
 	
-	PWMB_DUTY = fopen("/sys/devices/ocp.3/pwm_test_P9_14.15/duty", "w"); // change directory
-	PWMB_T = fopen("/sys/devices/ocp.3/pwm_test_P9_14.15/period", "w"); // change directory
-	
-	changePWMA(10, 20); // what values of PWM?
-	changePWMB(10, 20); // what values of PWM?
+	PWMB_DUTY = fopen("/sys/devices/ocp.3/pwm_test_P9_16.15/duty", "w");
+	PWMB_T = fopen("/sys/devices/ocp.3/pwm_test_P9_16.15/period", "w");
 	
 	sys2 = fopen("/sys/class/gpio/export", "w");
 	fseek(sys2, 0, SEEK_SET);
 	
-	RS_dir = fopen("/sys/class/gpio/gpio48/direction", "w"); // change directory
-	setOut(RS_dir);
-	
-	RW_dir = fopen("/sys/class/gpio/gpio48/direction", "w"); // change directory
-	setOut(RW_dir);
-	
-	SER_dir = fopen("/sys/class/gpio/gpio48/direction", "w"); // change directory
+	SER_dir = fopen("/sys/class/gpio/gpio45/direction", "w");
 	setOut(SER_dir);
 	
-	RS_VAL = fopen("/sys/class/gpio/gpio48/value", "w"); // change directory
-	RW_VAL = fopen("/sys/class/gpio/gpio48/value", "w"); // change directory
-	SER_DATA_VAL = fopen("/sys/class/gpio/gpio48/value", "w"); // change directory
+	SR_dir = fopen("/sys/class/gpio/gpio66/direction", "w");
+	setOut(SR_dir);
+	
+	LATCH_dir = fopen("/sys/class/gpio/gpio69/direction", "w");
+	setOut(LATCH_dir);
+	
+	SER_DATA_VAL = fopen("/sys/class/gpio/gpio45/value", "w");
+	SR_CLOCK_VAL = fopen("/sys/class/gpio/gpio66/value", "w");
+	LATCH_VAL = fopen("/sys/class/gpio/gpio69/value", "w");
 }
 
 void closePointers() {
@@ -73,12 +196,12 @@ void closePointers() {
 	fclose(PWMA_DUTY);
 	fclose(PWMB_T);
 	fclose(PWMA_DUTY);
-	fclose(RS_VAL);
-	fclose(RW_VAL);
 	fclose(SER_DATA_VAL);
-	fclose(RS_dir);
-	fclose(RW_dir);
+	fclose(SR_CLOCK_VAL);
+	fclose(LATCH_VAL);
 	fclose(SER_dir);
+	fclose(SR_dir);
+	fclose(LATCH_dir);
 }
 
 void setOut(FILE *dir) {
@@ -103,6 +226,12 @@ void changePWMB(int duty, int period) {
 
 // NEED ORDER OF PINS FROM SHIFT REGISTER TO H-BRIDGE
 // calculate command num for drive forward, turn left, turn right, stop, cruise, etc.
+// {A: Standby, B: AIN1 (left motor), C: AIN2 (left motor), D: BIN1 (right motor), E: BIN2 (right motor)} => {000,E,D,C,B,A}
+// Forward: 00010101 : 0x15
+// Backward: 00001011 : 0xB
+// Turn Left: 00011101 : 0x1D
+// Turn Right: 00010111 : 0x17
+// Stop: 00000001 : 0x1
 void command(unsigned char num) {
 	int i = 0;
 	int j = 7;
@@ -121,9 +250,9 @@ void command(unsigned char num) {
 		fprintf(SER_DATA_VAL, "%d", input[j]);
 
 		// Toggle the clock
-		fprintf(RS_CLOCK_, "%d", 1);		
+		fprintf(SR_CLOCK_, "%d", 1);		
 		udelay(10);
-		fprintf(RS_CLOCK_, "%d", 0);
+		fprintf(SR_CLOCK_, "%d", 0);
 		i--;
 	}
 	
