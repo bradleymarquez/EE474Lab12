@@ -10,8 +10,18 @@
  *  - Figure out hex commands for each motor action
  *  
  */
-
-static FILE* sys, sys2, PWMA_T, PWMA_DUTY, PWMB_T, PWMA_DUTY, SER_DATA_VAL, SR_CLOCK_VAL, LATCH_VAL, SER_dir, SR_dir, LATCH_dir;
+#include <stdio.h>
+#include <signal.h>
+#include <unistd.h>
+#include <time.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <stdlib.h>
+#include <error.h>
+#include <string.h>
+#include <errno.h>
+#include <fcntl.h>
 
 #define SER_DATA_ 45 // PIN
 #define SR_CLOCK_ 66
@@ -23,6 +33,7 @@ static FILE* sys, sys2, PWMA_T, PWMA_DUTY, PWMB_T, PWMA_DUTY, SER_DATA_VAL, SR_C
 #define NUM_SENSORS 4
 #define PWM_PERIOD 1000
 
+static FILE *sys, *sys2, *PWMA_T, *PWMA_DUTY, *PWMB_T, *PWMB_DUTY, *SER_DATA_VAL, *SR_CLOCK_VAL, *LATCH_VAL, *SER_dir, *SR_dir, *LATCH_dir;
 char *path = "/root/sensor";
 
 void pointSetup(void);
@@ -31,7 +42,7 @@ void setOut(FILE*);
 void changePWMA(int, int);
 void changePWMB(int, int);
 void command(unsigned char);
-void close(int);
+void closeHandler(int);
 void handler(int);
 void goForward(void);
 void goLeft(void);
@@ -40,7 +51,7 @@ void goBackward(void);
 void goStop(void);
 int main(){
 	signal(SIGUSR1, handler);
-	signal(SIGINT, close);
+	signal(SIGINT, closeHandler);
 	pointSetup();
 	goForward();
 	while (1) { // autodrive
@@ -79,7 +90,7 @@ void goStop() {
 	changePWMB(PWM_PERIOD, PWM_PERIOD);
 }
 
-void close(int signo) {
+void closeHandler(int signo) {
 	if (signo == SIGINT) {
 	system("pkill --signal SIGINT sensorDriver");
 	changePWMA(0, 1); // stop
@@ -95,79 +106,62 @@ void handler(int signo) {
 		int fd = open(path, O_RDWR);
 		if (fd == -1) {
 			printf("Error open: %s\n", strerror(errno));
-			return -1;
-		}
+		} else {
 		
-		// probably uneccessary
-		/*
-		ssize_t bytesread = 0;
-		int bytes = 0;
-		char readSensor[NUM_SENSORS];
-		while (bytesread < NUM_SENSORS) {
-			bytes = read(fd, readSensor, NUM_SENSORS);
-			if (bytes == -1) {
-				if (errno != EINTR) {
-					printf("Error on read: %s\n", strerror(errno));
-					return -1;
+			// probably uneccessary
+			/*
+			ssize_t bytesread = 0;
+			int bytes = 0;
+			char readSensor[NUM_SENSORS];
+			while (bytesread < NUM_SENSORS) {
+				bytes = read(fd, readSensor, NUM_SENSORS);
+				if (bytes == -1) {
+					if (errno != EINTR) {
+						printf("Error on read: %s\n", strerror(errno));
+						return -1;
+					}
+					continue;
 				}
-				continue;
-			}
-			bytesread += bytes;
-		}*/
+				bytesread += bytes;
+			}*/
 		
-		char readSensor[NUM_SENSORS];
-		read(fd, readSensor, NUM_SENSORS);
+			char readSensor[NUM_SENSORS];
+			read(fd, readSensor, NUM_SENSORS);
 		
-		// Sensor interrupt behavior
-		switch(readSensor) {
-			case('0000'): // no sensors are high
+			// Sensor interrupt behavior
+			if (strcmp(readSensor, "0000")) { // none high
 				goForward();
-				break;
-			case('0001'): // right is high
+			} else if (strcmp(readSensor, "0001")) { // right is high
 				goLeft();
-				break;
-			case('0010'): // left is high
+			} else if (strcmp(readSensor, "0010")) { // left is high
 				goRight();
-				break;
-			case('0011'): // left and right are high
+			} else if (strcmp(readSensor, "0011")) { // left and right are high
 				goForward();
-				break;
-			case('0100'): // back is high
+			} else if (strcmp(readSensor, "0100")) { // back is high
 				goRight();
-				break;
-			case('0101'): // back and right are high
+			} else if (strcmp(readSensor, "0101")) { // back and right are high
 				goLeft();
-				break;
-			case('0110'): // back and left are high
+			} else if (strcmp(readSensor, "0110")) { // back and left are high
 				goForward();
-				break;
-			case('0111'): // back, left, and right are high
+			} else if (strcmp(readSensor, "0111")) { // back, left, and right are high
 				goForward();
-				break;
-			case('1000'): // front is high
-				goBack();
-				break;
-			case('1001'): // front and right are high
+			} else if (strcmp(readSensor, "1000")) { // front is high
+				goBackward();
+			} else if (strcmp(readSensor, "1001")) { // front and right are high
 				goLeft();
-				break;
-			case('1010'): // front and left are high
+			} else if (strcmp(readSensor, "1010")) { // front and left are high
 				goRight();
-				break;
-			case('1011'): // front, left, and right are high
+			} else if (strcmp(readSensor, "1011")) { // front, left, and right are high
+				goBackward();
+			} else if (strcmp(readSensor, "1100")) { // front and back are high
 				goRight();
-				break;
-			case('1100'): // front and back are high
+			} else if (strcmp(readSensor, "1101")) { // front, back, and right are high
 				goLeft();
-				break;
-			case('1101'): // front, back, and right are high
-				goLeft();
-				break;
-			case('1110'): // front, back, and left are high
+			} else if (strcmp(readSensor, "1110")) { // front, back, and left are high
 				goRight();
-				break;
-			case('1111'): // all are high
+			} else if (strcmp(readSensor, "1111")) { // all are high
 				goStop();
-				break;
+			}
 		}
 	}
 }
@@ -201,8 +195,11 @@ void pointSetup(){
 	setOut(LATCH_dir);
 	
 	SER_DATA_VAL = fopen("/sys/class/gpio/gpio45/value", "w");
+	fseek(SER_DATA_VAL, 0, SEEK_SET);
 	SR_CLOCK_VAL = fopen("/sys/class/gpio/gpio66/value", "w");
+	fseek(SR_CLOCK_VAL, 0, SEEK_SET);
 	LATCH_VAL = fopen("/sys/class/gpio/gpio69/value", "w");
+	fseek(LATCH_VAL, 0, SEEK_SET);
 }
 
 void closePointers() {
@@ -266,13 +263,13 @@ void command(unsigned char num) {
 		fprintf(SER_DATA_VAL, "%d", input[j]);
 
 		// Toggle the clock
-		fprintf(SR_CLOCK_, "%d", 1);		
-		udelay(10);
-		fprintf(SR_CLOCK_, "%d", 0);
+		fprintf(SR_CLOCK_VAL, "%d", 1);		
+		usleep(10);
+		fprintf(SR_CLOCK_VAL, "%d", 0);
 		i--;
 	}
 	
-	fprintf(LATCH_, "%d", 1);
-	udelay(50);
-	fprintf(LATCH_, "%d", 0);
+	fprintf(LATCH_VAL, "%d", 1);
+	usleep(50);
+	fprintf(LATCH_VAL, "%d", 0);
 }
