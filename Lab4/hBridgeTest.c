@@ -31,7 +31,7 @@
 #define LEFT 2
 #define RIGHT 3
 #define NUM_SENSORS 4
-#define PWM_PERIOD 1000
+#define PWM_PERIOD 500
 
 static FILE *sys, *sys2, *PWM_T, *PWM_DUTY, *SER_DATA_VAL, *SR_CLOCK_VAL, *LATCH_VAL, *SER_dir, *SR_dir, *LATCH_dir;
 char *path = "/tmp/sensor";
@@ -60,33 +60,38 @@ int main(){
 
 void goForward() {
 	command(0x15);
-	changePWM(PWM_PERIOD / 2, PWM_PERIOD);
+	//changePWM(PWM_PERIOD / 2, PWM_PERIOD);
+	changePWM(0, PWM_PERIOD);
 }
 
 void goBackward() {
 	command(0xB);
-	changePWM(PWM_PERIOD / 2, PWM_PERIOD);
+	//changePWM(PWM_PERIOD / 2, PWM_PERIOD);
+	changePWM(0, PWM_PERIOD);
 }
 
 void goLeft() {
 	command(0xD);
-	changePWM(PWM_PERIOD / 2, PWM_PERIOD);
+	//changePWM(PWM_PERIOD / 2, PWM_PERIOD);
+	changePWM(0, PWM_PERIOD);
 }
 
 void goRight() {
 	command(0x13);
-	changePWM(PWM_PERIOD / 10, PWM_PERIOD);
+	//changePWM(PWM_PERIOD / 10, PWM_PERIOD);
+	changePWM(0, PWM_PERIOD);
 }
 
 void goStop() {
 	command(0x01);
-	changePWM(PWM_PERIOD, PWM_PERIOD);
+	//changePWM(PWM_PERIOD, PWM_PERIOD);
+	changePWM(0, PWM_PERIOD);
 }
 
 void closeHandler(int signo) {
 	if (signo == SIGINT) {
-		system("pkill --signal SIGINT sensorDriver");
 		changePWM(0, 1); // stop
+		system("pkill --signal SIGINT sensor");
 		closePointers();
 	}
 }
@@ -114,52 +119,52 @@ void handler(int signo) {
 			// Sensor interrupt behavior
 			if (strcmp(readSensor, "0000") == 0) { // none high
 				goForward();
-				printf("0000");
+				printf("0000 - Forward");
 			} else if (strcmp(readSensor, "0001") == 0) { // right is high
 				goLeft();
-				printf("0001");	
+				printf("0001 - Left");	
 			} else if (strcmp(readSensor, "0010") == 0) { // left is high
 				goRight();
-				printf("0010");
+				printf("0010 - Right");
 			} else if (strcmp(readSensor, "0011") == 0) { // left and right are high
 				goForward();
-				printf("0011");
-			} else if (strcmp(readSensor, "0100") == 0) { // back is high
-				goRight();
-				printf("0100");
+				printf("0011 - Forward");
+			} else if (strcmp(readSensor, "0100") == 0) { // front is high
+				goBackward();
+				printf("0100 - Backward");
 			} else if (strcmp(readSensor, "0101") == 0) { // back and right are high
 				goLeft();
-				printf("0101");
+				printf("0101 - Left");
 			} else if (strcmp(readSensor, "0110") == 0) { // back and left are high
 				goForward();
-				printf("0110");
+				printf("0110 - Forward");
 			} else if (strcmp(readSensor, "0111") == 0) { // back, left, and right are high
 				goForward();
-				printf("0111");
-			} else if (strcmp(readSensor, "1000") == 0) { // front is high
-				goBackward();
-				printf("1000");
+				printf("0111 - Forward");
+			} else if (strcmp(readSensor, "1000") == 0) { // back is high
+				goForward();
+				printf("1000 - Forward");
 			} else if (strcmp(readSensor, "1001") == 0) { // front and right are high
 				goLeft();
-				printf("1001");
+				printf("1001 - Left");
 			} else if (strcmp(readSensor, "1010") == 0) { // front and left are high
 				goRight();
-				printf("1010");
+				printf("1010 - Right");
 			} else if (strcmp(readSensor, "1011") == 0) { // front, left, and right are high
 				goBackward();
-				printf("1011");
+				printf("1011 - Backward");
 			} else if (strcmp(readSensor, "1100") == 0) { // front and back are high
 				goRight();
-				printf("1100");
+				printf("1100 - Right");
 			} else if (strcmp(readSensor, "1101") == 0) { // front, back, and right are high
 				goLeft();
-				printf("1101");
+				printf("1101 - Left");
 			} else if (strcmp(readSensor, "1110") == 0) { // front, back, and left are high
 				goRight();
-				printf("1110");
+				printf("1110 - Right");
 			} else if (strcmp(readSensor, "1111") == 0) { // all are high
 				goStop();
-				printf("1111");
+				printf("1111 - Stop");
 			}
 			printf("\n\n");
 			fflush(stdout); 

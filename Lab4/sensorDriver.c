@@ -22,6 +22,8 @@
 #define SAMPLE_RATE 25
 #define MIN_DIST 2600
 
+// CTRL+ C from hBridge still doesn't work
+
 typedef struct sensor_sample_struct {
 	int sample_i;
 	int sample_space[NUM_SENSORS][SAMPLES];
