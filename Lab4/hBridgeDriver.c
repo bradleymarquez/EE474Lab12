@@ -141,8 +141,8 @@ void handler(int signo) {
 				goLeft();
 				printf("0101 - Left");
 			} else if (strcmp(readSensor, "0110") == 0) { // back and left are high
-				goForward();
-				printf("0110 - Forward");
+				goRight();
+				printf("0110 - Right");
 			} else if (strcmp(readSensor, "0111") == 0) { // back, left, and right are high
 				goForward();
 				printf("0111 - Forward");
@@ -192,6 +192,7 @@ void pointSetup(){
 	fprintf(sys, "bone_pwm_P9_14");
 	fflush(sys);
 	
+	usleep(100);
 	// Opends PWM file pointers
 	PWM_DUTY = fopen("/sys/devices/ocp.3/pwm_test_P9_14.16/duty", "w");
 	if (PWM_DUTY == NULL) {
