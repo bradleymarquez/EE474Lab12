@@ -3,20 +3,25 @@
 # 5/25/16
 
 # default target
-tank: hBridgeDriver.o sensorDriver.o
-	arm-linux-gnueabihf-gcc -Wall -o tank hBridgeDriver.o sensorDriver.o
+all: sensor hBridge
 
-# individual source files
-hBridgeDriver.o: hBridgeDriver.c
-	arm-linux-gnueabihf-gcc -Wall -c hBridgeDriver.c
+hBridge: hBridgeTest.o 
+	arm-linux-gnueabihf-gcc -Wall -o hBridge hBridgeTest.o
+
+hBridgeTest.o: hBridgeTest.c
+	arm-linux-gnueabihf-gcc -Wall -c hBridgeTest.c
+
+sensor: sensorDriver.o
+	arm-linux-gnueabihf-gcc -Wall -o sensor sensorDriver.o
 
 sensorDriver.o: sensorDriver.c
 	arm-linux-gnueabihf-gcc -Wall -c sensorDriver.c
 
 # false target for easy transfer to beaglebone
 transfer:
-	scp hBridgeDriver sensorDriver root@192.168.7.2:~
+	scp sensor hBridge root@192.168.7.2:~
 
 # false target for cleanup
 clean:
 	rm -rf hBridgeDriver sensorDriver *.o *~
+

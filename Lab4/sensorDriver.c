@@ -12,14 +12,15 @@
 #include <fcntl.h>
 #include <stdbool.h>
 
+
 #define FRONT 0
 #define BACK 1
 #define LEFT 2
 #define RIGHT 3
 #define NUM_SENSORS 4
-#define SAMPLES 20
-#define SAMPLE_RATE 50000
-#define MIN_DIST 2000
+#define SAMPLES 50
+#define SAMPLE_RATE 25
+#define MIN_DIST 2600
 
 typedef struct sensor_sample_struct {
 	int sample_i;
@@ -28,7 +29,7 @@ typedef struct sensor_sample_struct {
 	char status[4];
 	FILE *files[NUM_SENSORS];
 } sensor_sample;
-sensor_sample sensor;
+sensor_sample sensor = {.status = {0,0,0,0}, .average = {0,0,0,0}};
 
 struct sigaction sa;
 struct itimerval timer;
@@ -96,20 +97,20 @@ void timer_handler(int sig) {
 	char oldStatus[4];
 	for (i = 0; i < NUM_SENSORS; i++) {
 		int pinValue;
-		int ret;
+		//int ret;
 		fseek(sensor.files[i], 0, SEEK_SET);
 		if (fscanf(sensor.files[i], "%d", &pinValue) != 1) {
 			printf("Error with fscanf\n");
-		}	
+		}
 		sensor.average[i] -= sensor.sample_space[i][sensor.sample_i % SAMPLES] / SAMPLES;
 		sensor.average[i] += pinValue / SAMPLES;
 		sensor.sample_space[i][sensor.sample_i % SAMPLES] = pinValue;
 		oldStatus[i] = sensor.status[i];
-		if (sensor.average[i] < MIN_DIST) {
+		if (sensor.average[i] > MIN_DIST) {
 			sensor.status[i] = '1';
 		} else {
 			sensor.status[i] = '0';
-		}
+		}	
 	}
 	if (oldStatus[0] != sensor.status[0] ||
 	    oldStatus[1] != sensor.status[1] ||
@@ -117,10 +118,18 @@ void timer_handler(int sig) {
 	    oldStatus[3] != sensor.status[3]) {
 		// Wirte the sensor.status to a named pipe
 		write(fifo_fd, sensor.status, NUM_SENSORS);
-
+		printf("Send Signal: ");
+		fflush(stdout);
+		int j;
+		for (j = 0; j < 4; j++) {
+			printf("%c", sensor.status[j]);
+		}
+		printf("\n");
+		fflush(stdout);
+		usleep(1);
 		// Send signal to master program that we have written to the named pipe
 		// which means the sensor status values have changed
-		if (system("pkill --signal SIGUSR1 sensorDriverTes") == -1) {
+		if (system("pkill --signal SIGUSR1 hBridge") == -1) {
 			printf("Error sending SIGUSR1\n");
 		}
 	}
