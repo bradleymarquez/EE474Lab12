@@ -23,31 +23,25 @@ whenever its sensors sense an obstacle
 3. In order to transfer the files to the board, use the command:
 	make transfer
 4. In order to operate the RoboTank without an attached ethernet or power cable,
-	the Beaglebone is powered by the attached power brick, the motors are powered
-	by the attached battery pack (~6V) and the 
+	a Bash script is ran on startup.
+5. For mobile power, the Beaglebone is powered by the attached power brick and
+	the motors are powered by the attached battery pack (~6V).
 	
-## Notes - lcd\_driver.c
-This file acted as the single driver for both LCDs. Using the system open/close
-functions the user could intialize and uninitialize the LCD screens and GPIO
-pins. Using the system write call the user could provide up to 48 characters
-which would then be printed to the two screens. Using the seperate enable
-pins for the LCDs this module could load the data to write to the shift
-register and then choose which screen to write to by selecting which
-enable pin to toggle.
+## Notes - hBridgeTest.c
+This file acted as the master program and driver for the H-bridge, and thus both
+motors. A Serial-to-parallel shift register is used to control the H-bridge in
+order to conserve precious GPIO pins. The parallel register on the shift register
+correspond to the H-bridge inputs as follows: (QA: Standby, QB: AIN1, QC: AIN2,
+QD: BIN1, QE, BIN2, QF: N/A, QG: N/A, QE: N/A). Note that A corresponds to the
+left motor and B corresponds to the right motor. Initially, the H-bridge is set
+to drive forward, and then responds to the environment depending on intterupts
+sents by the attached sensors.
 
-## Notes - button\_driver.c
-This file acted as the driver for the 5-way button. Using the system open/close
-functions the user could initialize and uninitialize the GPIO pins associated
-with the button. Using the system read call the user can receive 20 bytes
-of data which contains the status of each direction on the button.
-
-## Notes - buttonHero.c
-This file was written in user space C and used both the modules above to
-communicate with periferal devices while executing the game. This level
-of abstraction made communicating with periferals fairly simple from
-the perspective of buttonHero.c. This program creates the visual effect
-of scrolling arrows across a screen during which the user is meant to
-press the corresponding button direction assosiated with that arrow. High
-scores are recorded and displayed at the end of each round, and a buzzer
-along with LEDs were added (and controlled by buttonHero.c) in order to
-increase the aesthetics of the game.
+## Notes - sensorDriver.c
+This file acted as the driver for the sensors. This program takes an ADC sample
+every 25 milliseconds, and takes an average of the ADC samples every 50 samples,
+using a timer interrupt. The slave program then sends an interrupt to the master
+H-Bridge program if the calculated average is less than a threshold voltage that
+indicates that the sensors are detecting a nearby obstacle. This program writes
+what side has a sensor that is detecting an obstacle to a FIFO, which another
+program can then read and interpret.
