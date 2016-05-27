@@ -27,7 +27,7 @@ whenever its sensors sense an obstacle
 5. For mobile power, the Beaglebone is powered by the attached power brick and
 	the motors are powered by the attached battery pack (~6V).
 	
-## Notes - hBridgeTest.c
+## Notes - hBridgeDriver.c
 This file acted as the master program and driver for the H-bridge, and thus both
 motors. A Serial-to-parallel shift register is used to control the H-bridge in
 order to conserve precious GPIO pins. The parallel register on the shift register
@@ -45,3 +45,4 @@ H-Bridge program if the calculated average is less than a threshold voltage that
 indicates that the sensors are detecting a nearby obstacle. This program writes
 what side has a sensor that is detecting an obstacle to a FIFO, which another
 program can then read and interpret.
+

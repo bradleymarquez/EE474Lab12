@@ -1,3 +1,11 @@
+/*	sensorDriver.c
+ * Brad Marquez, Joseph Rothlin, Aigerim Shintemirova
+ * 24 / May / 2016
+ *
+ *
+ *  
+ */
+
 #include <stdio.h>
 #include <signal.h>
 #include <unistd.h>
@@ -84,9 +92,11 @@ void timer_Init() {
 	// Configure the timer to expire after SAMPLE_RATE msec...
 	timer.it_value.tv_sec = 0;
 	timer.it_value.tv_usec = SAMPLE_RATE;
+
 	// ... and every SAMPLE_RATE msec after that.
 	timer.it_interval.tv_sec = 0;
 	timer.it_interval.tv_usec = SAMPLE_RATE;
+
 	// Start a virtual timer. It counts down whenever this process is
 	// executing.
 	setitimer (ITIMER_VIRTUAL, &timer, NULL);
@@ -99,26 +109,28 @@ void timer_handler(int sig) {
 	char oldStatus[4];
 	for (i = 0; i < NUM_SENSORS; i++) {
 		int pinValue;
-		//int ret;
 		fseek(sensor.files[i], 0, SEEK_SET);
 		if (fscanf(sensor.files[i], "%d", &pinValue) != 1) {
 			printf("Error with fscanf\n");
 		}
+
 		sensor.average[i] -= sensor.sample_space[i][sensor.sample_i % SAMPLES] / SAMPLES;
 		sensor.average[i] += pinValue / SAMPLES;
 		sensor.sample_space[i][sensor.sample_i % SAMPLES] = pinValue;
 		oldStatus[i] = sensor.status[i];
+
 		if (sensor.average[i] > MIN_DIST) {
 			sensor.status[i] = '1';
 		} else {
 			sensor.status[i] = '0';
 		}	
 	}
+
 	if (oldStatus[0] != sensor.status[0] ||
 	    oldStatus[1] != sensor.status[1] ||
 	    oldStatus[2] != sensor.status[2] ||
 	    oldStatus[3] != sensor.status[3]) {
-		// Wirte the sensor.status to a named pipe
+		// Write the sensor.status to a named pipe
 		write(fifo_fd, sensor.status, NUM_SENSORS);
 		printf("Send Signal: ");
 		fflush(stdout);
@@ -129,6 +141,7 @@ void timer_handler(int sig) {
 		printf("\n");
 		fflush(stdout);
 		usleep(1);
+
 		// Send signal to master program that we have written to the named pipe
 		// which means the sensor status values have changed
 		if (system("pkill --signal SIGUSR1 hBridge") == -1) {
@@ -139,6 +152,7 @@ void timer_handler(int sig) {
 	closeFiles();
 }
 
+// Unlinks FIFO and closes files on Ctrl + C
 void closeDown(int signo) {
 	if (signo == SIGINT) {
 		unlink(path);
@@ -147,6 +161,7 @@ void closeDown(int signo) {
 	}
 }
 
+// Closes access to all files used
 void closeFiles() {
 	if (filesOpen) {
 		int i;
@@ -157,8 +172,8 @@ void closeFiles() {
 	}
 }
 
+// Sets up the sensor files
 void openFiles() {
-	// Setup sensor files
 	filesOpen = true;
 	sensor.files[BACK] = fopen("/sys/bus/iio/devices/iio:device0/in_voltage0_raw", "r");
 	sensor.files[FRONT] = fopen("/sys/bus/iio/devices/iio:device0/in_voltage6_raw", "r");

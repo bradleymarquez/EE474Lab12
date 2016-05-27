@@ -5,11 +5,11 @@
 # default target
 all: sensor hBridge
 
-hBridge: hBridgeTest.o 
-	arm-linux-gnueabihf-gcc -Wall -o hBridge hBridgeTest.o
+hBridge: hBridgeDriver.o 
+	arm-linux-gnueabihf-gcc -Wall -o hBridge hBridgeDriver.o
 
-hBridgeTest.o: hBridgeTest.c
-	arm-linux-gnueabihf-gcc -Wall -c hBridgeTest.c
+hBridgeDriver.o: hBridgeDriver.c
+	arm-linux-gnueabihf-gcc -Wall -c hBridgeDriver.c
 
 sensor: sensorDriver.o
 	arm-linux-gnueabihf-gcc -Wall -o sensor sensorDriver.o
