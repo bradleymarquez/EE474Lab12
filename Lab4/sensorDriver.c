@@ -26,9 +26,9 @@
 #define LEFT 2
 #define RIGHT 3
 #define NUM_SENSORS 4
-#define SAMPLES 50
-#define SAMPLE_RATE 25
-#define MIN_DIST 2600
+#define SAMPLES 100
+#define SAMPLE_RATE 50
+#define MIN_DIST 2500
 
 // CTRL+ C from hBridge still doesn't work
 
@@ -79,6 +79,7 @@ int main(int argc, char **argv) {
 		closeFiles();
 		return 1;
 	}
+	//usleep(5000000);
 	timer_Init();
 	while(1);
 }
@@ -132,15 +133,12 @@ void timer_handler(int sig) {
 	    oldStatus[3] != sensor.status[3]) {
 		// Write the sensor.status to a named pipe
 		write(fifo_fd, sensor.status, NUM_SENSORS);
-		printf("Send Signal: ");
-		fflush(stdout);
-		int j;
-		for (j = 0; j < 4; j++) {
-			printf("%c", sensor.status[j]);
-		}
-		printf("\n");
-		fflush(stdout);
 		usleep(1);
+
+		for (i = 0; i < NUM_SENSORS; i++) {
+			printf("%d\n", sensor.average[i]);
+		}
+		fflush(stdout);
 
 		// Send signal to master program that we have written to the named pipe
 		// which means the sensor status values have changed

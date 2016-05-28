@@ -18,6 +18,7 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdbool.h>
 
 #define SER_DATA_ 45 // Serial Data (Shift Register) - GPIO_PIN_45
 #define SR_CLOCK_ 66 // SR Clock (Shift Register) - GPIO_PIN_66
@@ -27,10 +28,11 @@
 #define LEFT 2 // Left Sensor Index
 #define RIGHT 3 // Right Sensor Index
 #define NUM_SENSORS 4 // Sensor Array Size
-#define PWM_PERIOD 500 // in nanoseconds
+#define PWM_PERIOD 10000000 // in nanoseconds
 
 static FILE *sys, *sys2, *PWM_T, *PWM_DUTY, *SER_DATA_VAL, *SR_CLOCK_VAL, *LATCH_VAL, *SER_dir, *SR_dir, *LATCH_dir;
 char *path = "/tmp/sensor"; // FIFO
+bool setup = false;
 
 void pointSetup(void);
 void closePointers(void);
@@ -45,10 +47,10 @@ void goRight(void);
 void goBackward(void);
 void goStop(void);
 int main(){
-	signal(SIGUSR1, handler); // Sensor Interrupt
 	signal(SIGINT, closeHandler); // Ctrl+C Interrupt
+	signal(SIGUSR1, handler); // Sensor Interrupt
 	pointSetup(); // Sets up Pointers
-	goForward(); // Default behavior
+	// goForward(); // Default behavior
 	while (1); // Autodrive
 	return 0;
 }
@@ -56,38 +58,38 @@ int main(){
 // Commands the H-Bridge to drive both motors CW
 void goForward() {
 	command(0x15);
-	// changePWM(PWM_PERIOD / 2, PWM_PERIOD);
 	changePWM(0, PWM_PERIOD);
+	//changePWM(0, PWM_PERIOD);
 }
 
 // Commands the H-bridge to drive both motors CCW
 void goBackward() {
 	command(0xB);
-	// changePWM(PWM_PERIOD / 2, PWM_PERIOD);
 	changePWM(0, PWM_PERIOD);
+	//changePWM(0, PWM_PERIOD);
 }
 
 // Commands the H-bridge to drive the "left motor" CCW
 // and the "right motor" CW
 void goLeft() {
 	command(0xD);
-	// changePWM(PWM_PERIOD / 2, PWM_PERIOD);
 	changePWM(0, PWM_PERIOD);
+	//changePWM(0, PWM_PERIOD);
 }
 
 // Commands the H-bridge to drive the "right motor" CCW
 // and the "left motor" CW
 void goRight() {
 	command(0x13);
-	// changePWM(PWM_PERIOD / 10, PWM_PERIOD);
 	changePWM(0, PWM_PERIOD);
+	//changePWM(0, PWM_PERIOD);f
 }
 
 // Commands the H-bridge to resist motion on both motors
 void goStop() {
 	command(0x01);
-	// changePWM(PWM_PERIOD, PWM_PERIOD);
-	changePWM(0, PWM_PERIOD);
+	changePWM(PWM_PERIOD, PWM_PERIOD);
+	//changePWM(0, PWM_PERIOD);
 }
 
 // Turns off motors, signals sensor program to terminate and
@@ -97,6 +99,7 @@ void closeHandler(int signo) {
 		changePWM(0, 1); // stop
 		system("pkill --signal SIGINT sensor");
 		closePointers();
+		exit(EXIT_SUCCESS);
 	}
 }
 
@@ -104,75 +107,76 @@ void closeHandler(int signo) {
 // based on the information sent by the slave
 void handler(int signo) {
 	if (signo == SIGUSR1) {
-		fflush(stdout); 
-		// Creates pipe
-		int fd = open(path, O_RDWR);
-		if (fd == -1) {
-			printf("Error open: %s\n", strerror(errno));
-		} else {
-			int j;
-			char readSensor[NUM_SENSORS];
-			read(fd, readSensor, NUM_SENSORS);
-			printf("Received Signal: ");
-			for (j = 0; j < 4; j++) {
-				printf("%c", readSensor[j]);
-			}
-			printf("\n");
-			fflush(stdout);
-			printf("Command Executed: ");
+		if (setup) {
+			// Opens pipe
+			int fd = open(path, O_RDWR);
+			if (fd == -1) {
+				printf("Error open: %s\n", strerror(errno));
+			} else {
+				int j;
+				char readSensor[NUM_SENSORS];
+				read(fd, readSensor, NUM_SENSORS);
+				printf("Received Signal: ");
+				for (j = 0; j < 4; j++) {
+					printf("%c", readSensor[j]);
+				}
+				printf("\n");
+				fflush(stdout);
+				printf("Command Executed: ");
 
-			// Sensor interrupt behavior
-			if (strcmp(readSensor, "0000") == 0) { // none high
-				goForward();
-				printf("0000 - Forward");
-			} else if (strcmp(readSensor, "0001") == 0) { // right is high
-				goLeft();
-				printf("0001 - Left");	
-			} else if (strcmp(readSensor, "0010") == 0) { // left is high
-				goRight();
-				printf("0010 - Right");
-			} else if (strcmp(readSensor, "0011") == 0) { // left and right are high
-				goForward();
-				printf("0011 - Forward");
-			} else if (strcmp(readSensor, "0100") == 0) { // front is high
-				goBackward();
-				printf("0100 - Backward");
-			} else if (strcmp(readSensor, "0101") == 0) { // back and right are high
-				goLeft();
-				printf("0101 - Left");
-			} else if (strcmp(readSensor, "0110") == 0) { // back and left are high
-				goRight();
-				printf("0110 - Right");
-			} else if (strcmp(readSensor, "0111") == 0) { // back, left, and right are high
-				goForward();
-				printf("0111 - Forward");
-			} else if (strcmp(readSensor, "1000") == 0) { // back is high
-				goForward();
-				printf("1000 - Forward");
-			} else if (strcmp(readSensor, "1001") == 0) { // front and right are high
-				goLeft();
-				printf("1001 - Left");
-			} else if (strcmp(readSensor, "1010") == 0) { // front and left are high
-				goRight();
-				printf("1010 - Right");
-			} else if (strcmp(readSensor, "1011") == 0) { // front, left, and right are high
-				goBackward();
-				printf("1011 - Backward");
-			} else if (strcmp(readSensor, "1100") == 0) { // front and back are high
-				goRight();
-				printf("1100 - Right");
-			} else if (strcmp(readSensor, "1101") == 0) { // front, back, and right are high
-				goLeft();
-				printf("1101 - Left");
-			} else if (strcmp(readSensor, "1110") == 0) { // front, back, and left are high
-				goRight();
-				printf("1110 - Right");
-			} else if (strcmp(readSensor, "1111") == 0) { // all are high
-				goStop();
-				printf("1111 - Stop");
+				// Sensor interrupt behavior
+				if (strcmp(readSensor, "0000") == 0) { // none high
+					goForward();
+					printf("0000 - Forward");
+				} else if (strcmp(readSensor, "0001") == 0) { // right is high
+					goLeft();
+					printf("0001 - Left");	
+				} else if (strcmp(readSensor, "0010") == 0) { // left is high
+					goRight();
+					printf("0010 - Right");
+				} else if (strcmp(readSensor, "0011") == 0) { // left and right are high
+					goForward();
+					printf("0011 - Forward");
+				} else if (strcmp(readSensor, "0100") == 0) { // front is high
+					goBackward();
+					printf("0100 - Backward");
+				} else if (strcmp(readSensor, "0101") == 0) { // front and right are high
+					goLeft();
+					printf("0101 - Left");
+				} else if (strcmp(readSensor, "0110") == 0) { // front and left are high
+					goRight();
+					printf("0110 - Right");
+				} else if (strcmp(readSensor, "0111") == 0) { // front, left, and right are high
+					goBackward();
+					printf("0111 - Backward");
+				} else if (strcmp(readSensor, "1000") == 0) { // back is high
+					goForward();
+					printf("1000 - Forward");
+				} else if (strcmp(readSensor, "1001") == 0) { // back and right are high
+					goLeft();
+					printf("1001 - Left");
+				} else if (strcmp(readSensor, "1010") == 0) { // back and left are high
+					goRight();
+					printf("1010 - Right");
+				} else if (strcmp(readSensor, "1011") == 0) { // back, left, and right are high
+					goForward();
+					printf("1011 - Forward");
+				} else if (strcmp(readSensor, "1100") == 0) { // front and back are high
+					goRight();
+					printf("1100 - Right");
+				} else if (strcmp(readSensor, "1101") == 0) { // front, back, and right are high
+					goLeft();
+					printf("1101 - Left");
+				} else if (strcmp(readSensor, "1110") == 0) { // front, back, and left are high
+					goRight();
+					printf("1110 - Right");
+				} else if (strcmp(readSensor, "1111") == 0) { // all are high
+					goStop();
+					printf("1111 - Stop");
+				}
+				printf("\n\n");
+				fflush(stdout); 
 			}
-			printf("\n\n");
-			fflush(stdout); 
 		}
 	}
 }
@@ -181,7 +185,7 @@ void handler(int signo) {
 void pointSetup(){
 	sys = fopen("/sys/devices/bone_capemgr.9/slots", "w");
 	if (sys == NULL) {
-		printf("Error opening period file: %s\n", strerror(errno));
+		printf("Error opening sys file: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	fseek(sys, 0, SEEK_END);
@@ -191,23 +195,37 @@ void pointSetup(){
 	fflush(sys);
 	fprintf(sys, "bone_pwm_P9_14");
 	fflush(sys);
-	
-	usleep(100);
-	// Opends PWM file pointers
-	PWM_DUTY = fopen("/sys/devices/ocp.3/pwm_test_P9_14.16/duty", "w");
-	if (PWM_DUTY == NULL) {
-		printf("Error opening duty file: %s\n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-	PWM_T = fopen("/sys/devices/ocp.3/pwm_test_P9_14.16/period", "w");
-	if (PWM_T == NULL) {
-		printf("Error opening period file: %s\n", strerror(errno));
-		exit(EXIT_FAILURE);
+
+	// Opens PWM file pointers
+	PWM_T = NULL;
+	while (PWM_T == NULL) {
+		PWM_T = fopen("/sys/devices/ocp.3/pwm_test_P9_14.15/period", "w");
+		if (PWM_T == NULL) {
+			PWM_T = fopen("/sys/devices/ocp.3/pwm_test_P9_14.16/period", "w");
+			/*if (PWM_T == NULL) {
+				printf("Error opening period file %s\n", strerror(errno));
+				exit(EXIT_FAILURE);
+			}*/
+		}
 	}
 
+	PWM_DUTY = NULL;
+	while (PWM_DUTY == NULL) {
+		PWM_DUTY = fopen("/sys/devices/ocp.3/pwm_test_P9_14.15/duty", "w");
+		if (PWM_DUTY == NULL) {
+			PWM_DUTY = fopen("/sys/devices/ocp.3/pwm_test_P9_14.16/duty", "w");
+			/*if (PWM_DUTY == NULL) {
+				printf("Error opening duty file %s\n", strerror(errno));
+				exit(EXIT_FAILURE);
+			}*/
+		}
+	}
 	sys2 = fopen("/sys/class/gpio/export", "w");
+	if (sys2 == NULL) {
+		printf("Error opening gpio export: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 	fseek(sys2, 0, SEEK_SET);
-
 	// Writes the value corresponding to the GPIO digital pins used
 	fprintf(sys2, "%d", SER_DATA_);
 	fflush(sys2);
@@ -215,22 +233,45 @@ void pointSetup(){
 	fflush(sys2);
 	fprintf(sys2, "%d", LATCH_);
 	fflush(sys2);
-	
 	// Sets GPIO to output
 	SER_dir = fopen("/sys/class/gpio/gpio45/direction", "w");
+	if (SER_dir == NULL) {
+		printf("Error opening SER_dir file %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 	setOut(SER_dir);
 	SR_dir = fopen("/sys/class/gpio/gpio66/direction", "w");
+	if (SR_dir == NULL) {
+		printf("Error opening SR_dir file %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 	setOut(SR_dir);
 	LATCH_dir = fopen("/sys/class/gpio/gpio69/direction", "w");
+	if (LATCH_dir == NULL) {
+		printf("Error opening LATCH_dir file %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 	setOut(LATCH_dir);
-	
 	// Sets up value file pointers
 	SER_DATA_VAL = fopen("/sys/class/gpio/gpio45/value", "w");
+	if (SER_DATA_VAL == NULL) {
+		printf("Error opening SER_DATA_VAL file %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 	fseek(SER_DATA_VAL, 0, SEEK_SET);
 	SR_CLOCK_VAL = fopen("/sys/class/gpio/gpio66/value", "w");
+	if (SR_CLOCK_VAL == NULL) {
+		printf("Error opening SR_CLOCK_VAL file %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 	fseek(SR_CLOCK_VAL, 0, SEEK_SET);
 	LATCH_VAL = fopen("/sys/class/gpio/gpio69/value", "w");
+	if (LATCH_VAL == NULL) {
+		printf("Error opening LATCH_VAL file %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 	fseek(LATCH_VAL, 0, SEEK_SET);
+	setup = true;
 }
 
 // Closes all file pointers used
@@ -256,10 +297,21 @@ void setOut(FILE *dir) {
 
 // Changes PWM pin to given duty cycle and period
 void changePWM(int duty, int period) {
-	fprintf(PWM_DUTY, "%d", duty);
-	fflush(PWM_DUTY);
-	fprintf(PWM_T, "%d", period);
-	fflush(PWM_T);
+	if (PWM_DUTY == NULL) {
+		printf("PWM_DUTY is NULL somehow\n");
+		fflush(stdout);
+	} else {
+		fprintf(PWM_DUTY, "%d", duty);
+		fflush(PWM_DUTY);
+	}
+
+	if (PWM_T == NULL) {
+		printf("PWM_DUTY is NULL somehow\n");
+		fflush(stdout);
+	} else {
+		fprintf(PWM_T, "%d", period);
+		fflush(PWM_T);
+	}
 }
 
 
