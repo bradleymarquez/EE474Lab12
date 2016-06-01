@@ -1,0 +1,10 @@
+[Unit]
+Description=Startup Automatic Driver
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/onStartup.sh
+
+[Install]
+WantedBy=multi-user.target
+
