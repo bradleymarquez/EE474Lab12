@@ -33,8 +33,14 @@
 #define NUM_SENSORS 4 // Sensor Array Size
 #define PWM_PERIOD 10000000 // in nanoseconds
 
-static FILE *sys, *sys2, *PWM_T, *PWM_DUTY, *SER_DATA_VAL, *SR_CLOCK_VAL, *LATCH_VAL, *SER_dir, *SR_dir, *LATCH_dir, *TX_dir, *RX_dir, *TX_VAL, *RX_VAL;
+#define baudrate 9600 // bpsec
+
+static FILE *sys, *sys2, *PWM_T, *PWM_DUTY, *SER_DATA_VAL, *SR_CLOCK_VAL, *LATCH_VAL, *SER_dir, *SR_dir, *LATCH_dir, *TX_, *RX_
+static int fd_RX = -1, fd_TX = -1;
+// *TX_dir, *RX_dir, *TX_VAL, *RX_VAL;
 char *path = "/tmp/sensor"; // FIFO
+char *RX_path = "/dev/ttyO4"
+char *TX_path = "dev/ttyO5"
 bool setup = false;
 
 void pointSetup(void);
@@ -49,6 +55,7 @@ void goLeft(void);
 void goRight(void);
 void goBackward(void);
 void goStop(void);
+void openBTpath(void);
 int main(){
 	signal(SIGINT, closeHandler); // Ctrl+C Interrupt
 	signal(SIGUSR1, handler); // Sensor Interrupt
@@ -184,16 +191,12 @@ void handler(int signo) {
 	}
 }
 
-void toggleBluetoothPort() {
-    if( fd!=-1 ) {
-        serialport_close(fd);
-        if(!quiet) printf("closed port %s\n",serialport);
-    }
-    strcpy(serialport,optarg);
-    fd = serialport_init(optarg, baudrate);
-    if( fd==-1 ) error("couldn't open port");
-    if(!quiet) printf("opened port %s\n",serialport);
-    serialport_flush(fd);
+void openBTpath() {
+    fd_TX = serialport_init(TX_path, baudrate);
+    if(fd_TX==-1 ) error("couldn't open TX port");
+	fd_RX = serialport_init(RX_path, baudrate);
+	if(fd_TX==-1 ) error("couldn't open RX port");
+
 }
 
 // Sets up access to the PWM pin and GPIO pins
@@ -349,6 +352,12 @@ void closePointers() {
 	fclose(SER_dir);
 	fclose(SR_dir);
 	fclose(LATCH_dir);
+	if (fd_RX != -1) {
+		serialport_close(fd_RX);
+	}
+	if (fd_TX != -1) {
+		serialport_close(fd_TX);
+	}
 }
 
 // Sets given GPIO to output
