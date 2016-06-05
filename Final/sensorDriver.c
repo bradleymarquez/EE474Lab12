@@ -136,7 +136,7 @@ void timer_handler(int sig) {
 		usleep(1);
 
 		for (i = 0; i < NUM_SENSORS; i++) {
-			printf("%d\n", sensor.average[i]);
+		//'	printf("%d\n", sensor.average[i]);
 		}
 		fflush(stdout);
 

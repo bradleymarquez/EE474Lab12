@@ -15,7 +15,7 @@
 #include <sys/ioctl.h>
 
 // uncomment this to debug reads
-//#define SERIALPORTDEBUG 
+#define SERIALPORTDEBUG 
 
 // takes the string name of the serial port (e.g. "/dev/tty.usbserial","COM1")
 // and a baud rate (bps) and connects to that port at that speed and 8N1.
@@ -23,11 +23,12 @@
 // returns valid fd, or -1 on error
 int serialport_init(const char* serialport, int baud)
 {
+    printf("INITIALIZING SERIAL PORT...\n");
     struct termios toptions;
     int fd;
     
-    // fd = open(serialport, O_RDWR | O_NOCTTY | O_NDELAY);
-    fd = open(serialport, O_RDWR | O_NONBLOCK );
+    fd = open(serialport, O_RDWR | O_NOCTTY | O_NDELAY);
+    //fd = open(serialport, O_RDWR | O_NONBLOCK );
     
     if (fd == -1)  {
         perror("serialport_init: Unable to open port ");
@@ -57,21 +58,26 @@ int serialport_init(const char* serialport, int baud)
     case 57600:  brate=B57600;  break;
     case 115200: brate=B115200; break;
     }
-    cfsetispeed(&toptions, brate);
-    cfsetospeed(&toptions, brate);
+
+    int check1 =  cfsetispeed(&toptions, brate);
+    int check2 = cfsetospeed(&toptions, brate);
+    printf("Check = %i, %i\n", check1, check2); // 0 is pass, -1 is fail
+    printf("Baud variable = %i\n", baud);
+    printf("Brate variable = %i\n", brate);
+    printf("Baud Rates = %i, %i\n", cfgetispeed(&toptions), cfgetospeed(&toptions));
 
     // 8N1
-    toptions.c_cflag &= ~PARENB;
-    toptions.c_cflag &= ~CSTOPB;
-    toptions.c_cflag &= ~CSIZE;
+    toptions.c_cflag &= ~PARENB; // no parity
+    toptions.c_cflag &= ~CSTOPB; // one stop bit
+    toptions.c_cflag &= ~CSIZE; // character size mask
     toptions.c_cflag |= CS8;
     // no flow control
-    toptions.c_cflag &= ~CRTSCTS;
+    toptions.c_cflag &= ~CRTSCTS; // turn on hardware flow control
 
     //toptions.c_cflag &= ~HUPCL; // disable hang-up-on-close to avoid reset
 
     toptions.c_cflag |= CREAD | CLOCAL;  // turn on READ & ignore ctrl lines
-    toptions.c_iflag &= ~(IXON | IXOFF | IXANY); // turn off s/w flow ctrl
+    toptions.c_iflag |= IXON | IXOFF | IXANY; // turn off s/w flow ctrl
 
     toptions.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); // make raw
     toptions.c_oflag &= ~OPOST; // make raw
@@ -86,7 +92,7 @@ int serialport_init(const char* serialport, int baud)
         perror("init_serialport: Couldn't set term attributes");
         return -1;
     }
-
+    printf("fd: %i\n", fd);
     return fd;
 }
 
@@ -136,7 +142,32 @@ int serialport_read_until(int fd, char* buf, char until, int buf_max, int timeou
 #endif
         buf[i] = b[0]; 
         i++;
-    } while( b[0] != until && i < buf_max && timeout>0 );
+    } while(b[0] != until && i < buf_max && timeout>0 );
+
+    buf[i] = 0;  // null terminate the string
+    return 0;
+}
+
+//
+int serialport_read(int fd, unsigned char* buf, int buf_max, int timeout)
+{
+    char b[1];  // read expects an array, so we give it a 1-byte array
+    int i=0;
+    do { 
+        int n = read(fd, b, 1);  // read a char at a time
+        if( n==-1) return -1;    // couldn't read
+        if( n==0 ) {
+            usleep( 1 * 1000 );  // wait 1 msec try again
+            timeout--;
+            if( timeout==0 ) return -2;
+            continue;
+        }
+#ifdef SERIALPORTDEBUG  
+        printf("serialport_read_until: i=%d, n=%d b='%c'\n",i,n,b[0]); // debug
+#endif
+        buf[i] = b[0]; 
+        i++;
+    } while(i < buf_max && timeout>0 );
 
     buf[i] = 0;  // null terminate the string
     return 0;

@@ -19,7 +19,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
-#include "arduino-serial/arduino-serial-lib.c"
+#include "arduino-serial-lib.c"
 
 #define SER_DATA_ 45 // Serial Data (Shift Register) - GPIO_PIN_45
 #define SR_CLOCK_ 66 // SR Clock (Shift Register) - GPIO_PIN_66
@@ -32,15 +32,21 @@
 #define RIGHT 3 // Right Sensor Index
 #define NUM_SENSORS 4 // Sensor Array Size
 #define PWM_PERIOD 10000000 // in nanoseconds
+#define READ_RATE 500
 
-#define baudrate 9600 // bpsec
+#define BAUDRATE 115200 // bpsec
+#define BUF_MAX 256
+#define TIMEOUT 100
 
-static FILE *sys, *sys2, *PWM_T, *PWM_DUTY, *SER_DATA_VAL, *SR_CLOCK_VAL, *LATCH_VAL, *SER_dir, *SR_dir, *LATCH_dir, *TX_, *RX_
-static int fd_RX = -1, fd_TX = -1;
+//struct termios termAttr; 
+struct sigaction sa;
+struct itimerval timer;
+
+static FILE *sys, *sys2, *PWM_T, *PWM_DUTY, *SER_DATA_VAL, *SR_CLOCK_VAL, *LATCH_VAL, *SER_dir, *SR_dir, *LATCH_dir;
+static int fd_RXTX = -1;
 // *TX_dir, *RX_dir, *TX_VAL, *RX_VAL;
 char *path = "/tmp/sensor"; // FIFO
-char *RX_path = "/dev/ttyO4"
-char *TX_path = "dev/ttyO5"
+char *RXTX_path = "/dev/ttyO1";
 bool setup = false;
 
 void pointSetup(void);
@@ -55,16 +61,141 @@ void goLeft(void);
 void goRight(void);
 void goBackward(void);
 void goStop(void);
-void openBTpath(void);
+void configureBluetooth(void);
+void bluetoothSend(char*);
+void timer_read_Init(void);
+void control_handler(int);
 int main(){
 	signal(SIGINT, closeHandler); // Ctrl+C Interrupt
 	signal(SIGUSR1, handler); // Sensor Interrupt
 	pointSetup(); // Sets up Pointers
-	// goForward(); // Default behavior
-	while (1); // Autodrive
+	configureBluetooth();
+	timer_read_Init();
+	while (1){
+	}
 	return 0;
 }
 
+// Timer interupt setup
+void timer_read_Init() {
+	memset (&sa, 0, sizeof (sa));
+	sa.sa_handler = &control_handler;
+	sigaction (SIGVTALRM, &sa, NULL);
+	
+	// Configure the timer to expire after SAMPLE_RATE msec...
+	timer.it_value.tv_sec = 0;
+	timer.it_value.tv_usec = READ_RATE;
+
+	// ... and every SAMPLE_RATE msec after that.
+	timer.it_interval.tv_sec = 0;
+	timer.it_interval.tv_usec = READ_RATE;
+
+	// Start a virtual timer. It counts down whenever this process is
+	// executing.
+	setitimer (ITIMER_VIRTUAL, &timer, NULL);
+}
+
+// Timer interrupt handler
+void control_handler(int sig) {
+	unsigned char buf[BUF_MAX];
+	serialport_read(fd_RXTX, buf, BUF_MAX, TIMEOUT);
+	//printf("Received data: %c\n",*buf);
+
+	//printf("0x%x\n", buf[5]);
+	if (buf[4] == '\x0') {
+		if (buf[5] == '\x0') {
+			printf("STOP\n");
+			fflush(stdout);
+			goStop();
+		} else if (buf[5] == '\x64') {
+			printf("A = BACKWARD\n");
+			fflush(stdout);
+			goBackward();
+		} else if (buf[5] == '\x9C') {
+			printf("Q = FORWARD\n");
+			fflush(stdout);
+			goForward();
+		}
+	} else if (buf[4] == '\x1') {
+		if (buf[5] == '\x0') {
+			printf("STOP\n");
+			fflush(stdout);
+			goStop();
+		} else if (buf[5] == '\x64') {
+			printf("S = LEFT\n");
+			fflush(stdout);
+			goLeft();
+		} else if (buf[5] == '\x9C') {
+			printf("W = RIGHT\n");
+			fflush(stdout);
+			goRight();
+		}
+	}
+
+	/*if (buf[0] == '\xC') {
+		printf("Buf[0] == 12\n");
+		fflush(stdout);
+	}
+	if (buf[1] == '\x0') {
+		printf("Buf[1] == 0\n");
+		fflush(stdout);
+	}
+	if (buf[2] == '\x80') {
+		printf("Buf[1] == 128\n");
+		fflush(stdout);
+	}
+	if (buf[3] == '\x4') {
+		printf("Buf[2] == 4\n");
+		fflush(stdout);
+	}
+	if (buf[4] == '\x80') {
+		printf("Buf[3] == 0\n");
+		fflush(stdout);
+	}
+	if (buf[5] == '\x80') {
+		printf("Buf[4] == 0\n");
+		fflush(stdout);
+	}
+	if (buf[6] == '\x80') {
+		printf("Buf[5] == 7\n");
+		fflush(stdout);
+	}
+	if (buf[7] == '\x80') {
+		printf("Buf[6] == 1\n");
+		fflush(stdout);
+	}*/
+}
+
+void configureBluetooth() {
+	/*bluetoothSend("$$$");
+	bluetoothSend("SN,Workstation12\n");
+	bluetoothSend("W\n");
+	bluetoothSend("T,1\n");
+	bluetoothSend("GF\n");
+	bluetoothSend("SO,%\n");
+	bluetoothSend("SU,115200\n");
+	//bluetoothSend("C,CO335EE26ED6\n");
+	bluetoothSend("GK\n");
+	bluetoothSend("R,1\n");
+	bluetoothSend("---\n");*/
+}
+
+void bluetoothSend(char *buf/*, char *out*/) {
+	char buf2[BUF_MAX];
+	serialport_flush(fd_RXTX);
+	int writing = serialport_write(fd_RXTX, buf);
+	if (writing == -1) {
+		printf("Error on write... : ");
+		fflush(stdout);
+	} else {
+		printf("Write success... : ");
+		printf("%s\n", buf);
+		fflush(stdout);
+	}
+	serialport_read_until(fd_RXTX, buf2, '\n', BUF_MAX, TIMEOUT);
+	printf("Received data: %s\n",buf2);
+	fflush(stdout);
+}
 // Commands the H-Bridge to drive both motors CW
 void goForward() {
 	command(0x15);
@@ -92,7 +223,7 @@ void goLeft() {
 void goRight() {
 	command(0x13);
 	changePWM(0, PWM_PERIOD);
-	//changePWM(0, PWM_PERIOD);f
+	//changePWM(0, PWM_PERIOD);
 }
 
 // Commands the H-bridge to resist motion on both motors
@@ -126,77 +257,69 @@ void handler(int signo) {
 				int j;
 				char readSensor[NUM_SENSORS];
 				read(fd, readSensor, NUM_SENSORS);
-				printf("Received Signal: ");
+				//printf("Received Signal: ");
 				for (j = 0; j < 4; j++) {
-					printf("%c", readSensor[j]);
+				//	printf("%c", readSensor[j]);
 				}
-				printf("\n");
+				//printf("\n");
 				fflush(stdout);
-				printf("Command Executed: ");
+			//	printf("Command Executed: ");
 
 				// Sensor interrupt behavior
 				if (strcmp(readSensor, "0000") == 0) { // none high
-					goForward();
-					printf("0000 - Forward");
+				//	goForward();
+				//	printf("0000 - Forward");
 				} else if (strcmp(readSensor, "0001") == 0) { // right is high
 					goLeft();
-					printf("0001 - Left");	
+					//printf("0001 - Left");	
 				} else if (strcmp(readSensor, "0010") == 0) { // left is high
 					goRight();
-					printf("0010 - Right");
+				//	printf("0010 - Right");
 				} else if (strcmp(readSensor, "0011") == 0) { // left and right are high
 					goForward();
-					printf("0011 - Forward");
+				//	printf("0011 - Forward");
 				} else if (strcmp(readSensor, "0100") == 0) { // front is high
 					goBackward();
-					printf("0100 - Backward");
+				//	printf("0100 - Backward");
 				} else if (strcmp(readSensor, "0101") == 0) { // front and right are high
 					goLeft();
-					printf("0101 - Left");
+				//	printf("0101 - Left");
 				} else if (strcmp(readSensor, "0110") == 0) { // front and left are high
 					goRight();
-					printf("0110 - Right");
+				//	printf("0110 - Right");
 				} else if (strcmp(readSensor, "0111") == 0) { // front, left, and right are high
 					goBackward();
-					printf("0111 - Backward");
+				//	printf("0111 - Backward");
 				} else if (strcmp(readSensor, "1000") == 0) { // back is high
 					goForward();
-					printf("1000 - Forward");
+				//	printf("1000 - Forward");
 				} else if (strcmp(readSensor, "1001") == 0) { // back and right are high
 					goLeft();
-					printf("1001 - Left");
+				//	printf("1001 - Left");
 				} else if (strcmp(readSensor, "1010") == 0) { // back and left are high
 					goRight();
-					printf("1010 - Right");
+				//	printf("1010 - Right");
 				} else if (strcmp(readSensor, "1011") == 0) { // back, left, and right are high
 					goForward();
-					printf("1011 - Forward");
+				//	printf("1011 - Forward");
 				} else if (strcmp(readSensor, "1100") == 0) { // front and back are high
 					goRight();
-					printf("1100 - Right");
+				//	printf("1100 - Right");
 				} else if (strcmp(readSensor, "1101") == 0) { // front, back, and right are high
 					goLeft();
-					printf("1101 - Left");
+				//	printf("1101 - Left");
 				} else if (strcmp(readSensor, "1110") == 0) { // front, back, and left are high
 					goRight();
-					printf("1110 - Right");
+				//	printf("1110 - Right");
 				} else if (strcmp(readSensor, "1111") == 0) { // all are high
 					goStop();
-					printf("1111 - Stop");
+				//	printf("1111 - Stop");
 				}
-				printf("\n\n");
+				//printf("\n\n");
 				fflush(stdout); 
 			}
 		}
 	}
-}
-
-void openBTpath() {
-    fd_TX = serialport_init(TX_path, baudrate);
-    if(fd_TX==-1 ) error("couldn't open TX port");
-	fd_RX = serialport_init(RX_path, baudrate);
-	if(fd_TX==-1 ) error("couldn't open RX port");
-
 }
 
 // Sets up access to the PWM pin and GPIO pins
@@ -206,10 +329,10 @@ void pointSetup(){
 		printf("Error opening sys file: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	fseek(sys, 0, SEEK_END);
+	fseek(sys, 0, SEEK_SET);
 	
 	// Create UART file
-	fprintf(sys, "BB_UART4");
+	fprintf(sys, "BB-UART1");
 	fflush(sys);
 
 	// Creates PWM files
@@ -253,16 +376,13 @@ void pointSetup(){
 		exit(EXIT_FAILURE);
 	}
 	fseek(sys2, 0, SEEK_SET);
+
 	// Writes the value corresponding to the GPIO digital pins used
 	fprintf(sys2, "%d", SER_DATA_);
 	fflush(sys2);
 	fprintf(sys2, "%d", SR_CLOCK_);
 	fflush(sys2);
 	fprintf(sys2, "%d", LATCH_);
-	fflush(sys2);
-	fprintf(sys2, "%d", RX_);
-	fflush(sys2);
-	fprintf(sys2, "%d", TX_);
 	fflush(sys2);
 
 	// Sets GPIO directions
@@ -287,20 +407,6 @@ void pointSetup(){
 	}
 	setOut(LATCH_dir);
 
-	TX_dir = fopen("/sys/class/gpio/gpio67/direction", "w");
-	if (TX_dir == NULL) {
-		printf("Error opening TX_dir file %s\n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-	setOut(TX_dir);
-
-	RX_dir = fopen("/sys/class/gpio/gpio68/direction", "w");
-	if (RX_dir == NULL) {
-		printf("Error opening RX_dir file %s\n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-	setOut(RX_dir);
-
 	// Sets up value file pointers
 	SER_DATA_VAL = fopen("/sys/class/gpio/gpio45/value", "w");
 	if (SER_DATA_VAL == NULL) {
@@ -322,21 +428,9 @@ void pointSetup(){
 		exit(EXIT_FAILURE);
 	}
 	fseek(LATCH_VAL, 0, SEEK_SET);
-
-	TX_VAL = fopen("/sys/class/gpio/gpio67/value", "w");
-	if (LATCH_VAL == NULL) {
-		printf("Error opening TX_VAL file %s\n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-	fseek(TX_VAL, 0, SEEK_SET);
-
-	RX_VAL = fopen("/sys/class/gpio/gpio68/value", "w");
-	if (LATCH_VAL == NULL) {
-		printf("Error opening RX_VAL file %s\n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-	fseek(RX_VAL, 0, SEEK_SET);
-
+	
+	fd_RXTX = serialport_init(RXTX_path, BAUDRATE);
+	printf("fd_RXTX = %i\n", fd_RXTX);
 	setup = true;
 }
 
@@ -352,11 +446,8 @@ void closePointers() {
 	fclose(SER_dir);
 	fclose(SR_dir);
 	fclose(LATCH_dir);
-	if (fd_RX != -1) {
-		serialport_close(fd_RX);
-	}
-	if (fd_TX != -1) {
-		serialport_close(fd_TX);
+	if (fd_RXTX != -1) {
+		serialport_close(fd_RXTX);
 	}
 }
 
@@ -378,7 +469,7 @@ void changePWM(int duty, int period) {
 	}
 
 	if (PWM_T == NULL) {
-		printf("PWM_DUTY is NULL somehow\n");
+		printf("PWM_T is NULL somehow\n");
 		fflush(stdout);
 	} else {
 		fprintf(PWM_T, "%d", period);
@@ -428,3 +519,4 @@ void command(unsigned char num) {
 	fflush(LATCH_VAL);
 
 }
+
