@@ -98,7 +98,7 @@ void timer_read_Init() {
 // Timer interrupt handler
 void control_handler(int sig) {
 	unsigned char buf[BUF_MAX];
-	serialport_read(fd_RXTX, buf, BUF_MAX, TIMEOUT);
+	serialport_get(fd_RXTX, buf, BUF_MAX, TIMEOUT);
 	//printf("Received data: %c\n",*buf);
 
 	//printf("0x%x\n", buf[5]);
@@ -130,6 +130,14 @@ void control_handler(int sig) {
 			fflush(stdout);
 			goRight();
 		}
+	} else if (buf[5] == '\x2') {
+		if (buf[5] == '\x0') {
+			// servoLeft;
+			goStop();
+		} else if (buf[5] == '\x64') {
+			// servoStop;
+		} else if (buf[5] == '\x9C') {
+			// servoRight;
 	}
 
 	/*if (buf[0] == '\xC') {

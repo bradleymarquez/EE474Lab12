@@ -149,7 +149,7 @@ int serialport_read_until(int fd, char* buf, char until, int buf_max, int timeou
 }
 
 //
-int serialport_read(int fd, unsigned char* buf, int buf_max, int timeout)
+int serialport_get(int fd, unsigned char* buf, int buf_max, int timeout)
 {
     char b[1];  // read expects an array, so we give it a 1-byte array
     int i=0;
