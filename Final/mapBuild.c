@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#define file_Path "putty.log"
+#define file_Path "putty.txt"
 #define NUM_OF_ANGLES 9
 #define NUM_OF_SENSORS 4
 #define FRONT 0
@@ -36,6 +36,7 @@ int main() {
     }
 	
 	oldMTime = sb.st_mtime;
+	printf("old: %i\n", oldMTime);
 	
 	FILE *infile;
 	infile = fopen(file_Path, "r");       // using relative path name of file
@@ -45,9 +46,12 @@ int main() {
 	}
 	int i;
 	print_Data(infile);
+	fflush(infile);
 	while (1) {
-		if(file_is_modified(file_Path) > 0) {
+		if(file_is_modified(file_Path) == 1) {
 			print_Data(infile);
+			fflush(infile);
+
 		}
 	}
 
@@ -55,18 +59,24 @@ int main() {
 }
 
 void print_Data(FILE * infile) {
-	int data [4][9];
-	fscanf(infile, "^[A-Z]$", data[0][0], data[1][0], data[2][0], data[3][0], data[0][1], data[1][1], data[2][1], data[3][1],
+	//int data [4][9];
+
+	/*fscanf(infile, "%i", data[0][0], data[1][0], data[2][0], data[3][0], data[0][1], data[1][1], data[2][1], data[3][1],
 	 data[0][2], data[1][2], data[2][2], data[3][2], data[0][3], data[1][3], data[2][3], data[3][3],
 	  data[0][4], data[1][4], data[2][4], data[3][4], data[0][5], data[1][5], data[2][5], data[3][5],
 	   data[0][6], data[1][6], data[2][6], data[3][6], data[0][7], data[1][7], data[2][7], data[3][7],
-		data[0][8], data[1][8], data[2][8], data[3][8]);
+		data[0][8], data[1][8], data[2][8], data[3][8]);*/
 	scan_data fixed;
 	int i, j, x, y, curr;
-	for (i = 0; i < NUM_OF_SENSORS; i++) {
-		for (j = 0; j < NUM_OF_ANGLES; j++) {
-			fixed.distances[i][j] = data[i][j];
-			printf("Fixed : %i\n", data[i][j]);
+	for (j = 0; j < NUM_OF_ANGLES; j++) {
+		for (i = 0; i < NUM_OF_SENSORS; i++) {
+			int temp = 21;
+			while (temp < 0 || temp > 20) {
+				//printf("Scanning...");
+				temp = fgetc(infile) - 65;
+			}
+			fixed.distances[i][j] = temp;
+			printf("Fixed : %i\n", temp);
 		}
 	}
 	
@@ -80,7 +90,13 @@ int file_is_modified(const char *path) {
         perror(" [file_is_modified] stat");
         exit(errno);
     }
-    return file_stat.st_mtime > oldMTime;
+	if (file_stat.st_mtime > oldMTime) {
+		printf("old time: %i\n", oldMTime);
+		oldMTime = file_stat.st_mtime;
+		printf("new time: %i\n", oldMTime);
+		return 1;
+	}
+	return 0;
 }
 
 void closeHandler(int signo) {
@@ -167,28 +183,24 @@ void addObstacles(char display[49][93], scan_data *data) {
 	
 	// Start (45, 20) up 1	
 	curr = data->distances[FRONT][0];
-	printf("Data : %i\n", curr);
 	x = 45;
 	y = curr;
 	display[y][x] = 'X';
 
 	// Start (46, 20) up 4 right 1
 	curr = data->distances[FRONT][1];
-		printf("Data : %i\n", curr);
 	x = 46 + ((20 - curr) / 4);
 	y = curr;
 	display[y][x] = 'X';
 
 	// Start (47, 20) up 3 right 2
 	curr = data->distances[FRONT][2];
-	printf("Data : %i\n", curr);
 	x =  47 + ((20 - curr) * 2 / 3);
 	y = curr;
 	display[y][x] = 'X';
 	
 	// Start (48, 20) up 1 right 1
 	curr = data->distances[FRONT][3];
-		printf("Data : %i\n", curr);
 	x = 48 + (20 - curr);
 	y = curr;
 	display[y][x] = 'X';
@@ -224,35 +236,30 @@ void addObstacles(char display[49][93], scan_data *data) {
 	x = ((20 - curr) * 2) + 50;
 	y = 23 - ((20 - curr) / 8);
 	display[y][x] = 'X';
-	printf("9.1\n");
 	
 	// Start (50, 24) right 1
 	curr = data->distances[RIGHT][0];
 	x = ((20 - curr) * 2) + 50;
 	y = 24;
 	display[y][x] = 'X';
-	printf("9.2\n");
 	
 	// Start (50, 25) down 1 right 8
 	curr = data->distances[RIGHT][1];
 	x = ((20 - curr) * 2) + 50;
 	y = 25 + ((20 - curr) / 8);
 	display[y][x] = 'X';
-	printf("9.3\n");
 	
 	// Start (50, 26) down 1 right 4
 	curr = data->distances[RIGHT][2];
 	x = ((20 - curr) * 2) + 50;
 	y = 26 + ((20 - curr) / 4);
 	display[y][x] = 'X';
-	printf("9.4\n");
 	
 	// Start (50, 27) down 1 right 3
 	curr = data->distances[RIGHT][3];
 	x = ((20 - curr) * 2) + 50;
 	y = 27 + ((20 - curr) / 3);
 	display[y][x] = 'X';
-	printf("10\n"); 
 
 	// Start (50, 28) down 1 right 2
 	curr = data->distances[RIGHT][4];
@@ -283,7 +290,6 @@ void addObstacles(char display[49][93], scan_data *data) {
 	x = 46 + ((20 - curr) / 4);
 	y = (20 - curr) + 28;
 	display[y][x] = 'X';
-	printf("11\n");
 	
 	// Start (45, 28) down 1
 	curr = data->distances[BACK][0];
@@ -308,7 +314,6 @@ void addObstacles(char display[49][93], scan_data *data) {
 	x = 42 - (20 - curr) ;
 	y = (20 - curr) + 28;
 	display[y][x] = 'X';
-	printf("12\n");
 	
 	// Start (41, 28) down 2 left 3
 	curr = data->distances[BACK][4];
@@ -363,13 +368,13 @@ void addObstacles(char display[49][93], scan_data *data) {
 	x = 40 - ((20 - curr) * 2);
 	y = 21 - ((20 - curr) / 3);
 	display[y][x] = 'X';
-	printf("13\n");
+
 	// Start (40, 20) up 1 left 2
 	curr = data->distances[LEFT][4];
 	x = 40 - ((20 - curr) * 2);
 	y = 20 - ((20 - curr) / 2);
 	display[y][x] = 'X';
-	printf("14\n");
+
 	// Start (41, 20) up 2 left 3
 	curr = data->distances[LEFT][5];
 	x = 41 - ((20 - curr) * 2);
