@@ -8,15 +8,22 @@ void sigHandler(int signo) {
 }
 
 int main() {
-	servoInit();
+	scannerInit();
+	printf("Exit scannerInit\n");
 	signal(SIGINT, sigHandler);
 	while(1) {
 		scan_data myData;
 		printf("Press enter to do a scan");
 		char angle[1024];
+		printf("here1\n");
 		scanf("%s", angle);
-		scan(10, 1, &myData);
+		printf("here2\n");
+		scan(300, 1, &myData);
+		printf("here3\n");
 		printNums(&myData);
+		printf("here4\n");
+		printDisplay(&myData);
+		printf("here5\n");
 	}
 	closeScanner();
 }
