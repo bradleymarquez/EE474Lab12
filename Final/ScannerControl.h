@@ -7,12 +7,14 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <signal.h>
+#include <unistd.h>
+#include <string.h>
 
 #include "ServoControl.h"
 #include "SensorControl.h"
 
-#define NUM_OF_ANGLES 23
-#define NUM_OF_SENSORS 2
+#define NUM_OF_ANGLES 9
+#define NUM_OF_SENSORS 4
 
 typedef struct scan_data_struct {
 	int distances[NUM_OF_SENSORS][NUM_OF_ANGLES];
@@ -39,5 +41,7 @@ void printDisplay(scan_data *data);
 
 // Close devices used by the scanner
 void closeScanner();
+
+void addObstacles(char display[49][93], scan_data *data);
 
 #endif  // _SCANNERCONTROL_H_
