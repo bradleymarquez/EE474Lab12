@@ -11,13 +11,25 @@ bool scannerInit() {
 // after each slight rotation and average the sensor readings from each angle.
 // The data will be returned by modifying the scan_data argument.
 void scan(int samples, int pause, scan_data *returnData) {
+	printf("here0\n");	
+	fflush(stdout);
 	angleFromZero(0);
+	printf("here1\n");
+	fflush(stdout);
 	//usleep(500000);
 	returnData->distances[FRONT][0] = getAverage(samples, pause, FRONT);
+	printf("here1.1\n");
+	fflush(stdout);
 	returnData->distances[BACK][0] = getAverage(samples, pause, BACK);
+	printf("here1.2\n");
+	fflush(stdout);
 	returnData->distances[LEFT][0] = getAverage(samples, pause, LEFT);
+	printf("here1.3\n");
+	fflush(stdout);
 	returnData->distances[RIGHT][0] = getAverage(samples, pause, RIGHT);
 	int j;
+	printf("here2\n");
+	fflush(stdout);
 	for (j = 20; j <= 90; j += 10) {
 		angleFromZero(j);
 		//usleep(500000);
@@ -25,7 +37,9 @@ void scan(int samples, int pause, scan_data *returnData) {
 		returnData->distances[BACK][(j - 10) / 10] = getAverage(samples, pause, BACK);
 		returnData->distances[LEFT][(j - 10) / 10] = getAverage(samples, pause, LEFT);
 		returnData->distances[RIGHT][(j - 10) / 10] = getAverage(samples, pause, RIGHT);
-	}     
+	}    
+		printf("here3\n"); 
+	fflush(stdout);
 }
 
 // Reads the specified sensor "samples" number of times "pause" microseconds
@@ -368,10 +382,6 @@ void addObstacles(char display[49][93], scan_data *data) {
 	x = 40 - ((20 - curr) * 2);
 	y = 26 + ((20 - curr) / 4);
 	display[y][x] = 'X';
-                           |
-|                           X             |L   R|                       X                 |
-|                                         |     |                                         |
-|                       X                 |__B__|                     X                   |
 
 	// Start (40, 25) down 1 left 8
 	curr = scaled.distances[BACK][8];

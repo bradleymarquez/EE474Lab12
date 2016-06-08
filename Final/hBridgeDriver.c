@@ -20,10 +20,11 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include "arduino-serial-lib.c"
+#include "ScannerControl.h"
 
-#define SER_DATA_ 45 // Serial Data (Shift Register) - GPIO_PIN_45
-#define SR_CLOCK_ 66 // SR Clock (Shift Register) - GPIO_PIN_66
-#define LATCH_ 69 // Latch (Shift Register) - GPIO_PIN_69
+#define SER_DATA_ 112 // Serial Data (Shift Register) - GPIO_PIN_45
+#define SR_CLOCK_ 49 // SR Clock (Shift Register) - GPIO_PIN_66
+#define LATCH_ 115 // Latch (Shift Register) - GPIO_PIN_69
 #define RX_ 68 // RX of Beaglebone - GPIO_PIN_68
 #define TX_ 67 // TX of Beaglebone - GPIO_PIN_67
 #define FRONT 0 // Front Sensor Index
@@ -97,16 +98,80 @@ void timer_read_Init() {
 
 // Timer interrupt handler
 void control_handler(int sig) {
-	unsigned char buf[BUF_MAX];
-	serialport_get(fd_RXTX, buf, BUF_MAX, TIMEOUT);
+	char buf[BUF_MAX];
+	memset(&buf, 0, sizeof(buf));
+	serialport_flush(fd_RXTX);
+	//serialport_read(fd_RXTX, buf, BUF_MAX, TIMEOUT);
+	serialport_read_until(fd_RXTX, buf, '\n', BUF_MAX, TIMEOUT);
 	//printf("Received data: %c\n",*buf);
-
 	//printf("0x%x\n", buf[5]);
-	if (buf[4] == '\x0') {
-		if (buf[5] == '\x0') {
-			printf("STOP\n");
+	if (buf[0] == 'w') {
+		printf("W = FORWARD\n");
+		fflush(stdout);
+		goBackward();
+	} else if (buf[0] == 'a') {
+		printf("A = LEFT\n");
+		fflush(stdout);
+		goLeft();
+	} else if (buf[0] == 's') {
+		printf("S = BACKWARD\n");
+		fflush(stdout);
+		goBackward();
+	} else if (buf[0] == 'd') {
+		printf("D = RIGHT\n");
+		fflush(stdout);
+		goRight();
+	} else if (buf[0] == '\0') {
+		printf("STOP\n");
+		fflush(stdout);
+		goStop();
+	} else if (buf[0] == 'e') {
+		printf("0");
+		fflush(stdout);
+		scan_data myData;
+		printf("1");
+		fflush(stdout);
+		scan(300, 1, &myData);
+		printf("2");
+		fflush(stdout);
+		int i, j;
+		scan_data scaled;
+		for (i = 0; i < NUM_OF_SENSORS; i++) {
+			for (j = 0; j < NUM_OF_ANGLES; j++) {
+				scaled.distances[i][j] = (int) (((float)myData.distances[i][j] - 1000) / 150);
+				if (myData.distances[i][j] > 4000) {
+					scaled.distances[i][j] = 20;
+				} else if (myData.distances[i][j] < 1000) {
+					scaled.distances[i][j] = 0;
+				}
+			}
+		}
+		for (i = 0; i < 9; i ++) {
+			serialport_writebyte(fd_RXTX, (char) (65 + scaled.distances[FRONT][i]));
+			printf("Front: %i\n", scaled.distances[FRONT][i]);
 			fflush(stdout);
-			goStop();
+			serialport_writebyte(fd_RXTX, (char) (65 + scaled.distances[BACK][i]));
+			printf("Back: %i\n", scaled.distances[BACK][i]);
+			fflush(stdout);
+			serialport_writebyte(fd_RXTX, (char) (65 + scaled.distances[LEFT][i]));
+			printf("Left: %i\n", scaled.distances[LEFT][i]);
+			fflush(stdout);
+			serialport_writebyte(fd_RXTX, (char) (65 + scaled.distances[RIGHT][i]));
+			printf("Right: %i\n", scaled.distances[RIGHT][i]);
+			fflush(stdout);
+		}
+		printf("3");
+		fflush(stdout);
+
+		printf("4");
+		fflush(stdout);
+		serialport_flush(fd_RXTX);
+
+	}
+	//printf("5");
+	//fflush(stdout);
+		/*if (buf[5] == '\x0') {
+			
 		} else if (buf[5] == '\x64') {
 			printf("A = BACKWARD\n");
 			fflush(stdout);
@@ -130,15 +195,7 @@ void control_handler(int sig) {
 			fflush(stdout);
 			goRight();
 		}
-	} else if (buf[5] == '\x2') {
-		if (buf[5] == '\x0') {
-			// servoLeft;
-			goStop();
-		} else if (buf[5] == '\x64') {
-			// servoStop;
-		} else if (buf[5] == '\x9C') {
-			// servoRight;
-	}
+	}*/
 
 	/*if (buf[0] == '\xC') {
 		printf("Buf[0] == 12\n");
@@ -394,21 +451,21 @@ void pointSetup(){
 	fflush(sys2);
 
 	// Sets GPIO directions
-	SER_dir = fopen("/sys/class/gpio/gpio45/direction", "w");
+	SER_dir = fopen("/sys/class/gpio/gpio112/direction", "w");
 	if (SER_dir == NULL) {
 		printf("Error opening SER_dir file %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	setOut(SER_dir);
 
-	SR_dir = fopen("/sys/class/gpio/gpio66/direction", "w");
+	SR_dir = fopen("/sys/class/gpio/gpio49/direction", "w");
 	if (SR_dir == NULL) {
 		printf("Error opening SR_dir file %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	setOut(SR_dir);
 
-	LATCH_dir = fopen("/sys/class/gpio/gpio69/direction", "w");
+	LATCH_dir = fopen("/sys/class/gpio/gpio115/direction", "w");
 	if (LATCH_dir == NULL) {
 		printf("Error opening LATCH_dir file %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
@@ -416,21 +473,21 @@ void pointSetup(){
 	setOut(LATCH_dir);
 
 	// Sets up value file pointers
-	SER_DATA_VAL = fopen("/sys/class/gpio/gpio45/value", "w");
+	SER_DATA_VAL = fopen("/sys/class/gpio/gpio112/value", "w");
 	if (SER_DATA_VAL == NULL) {
 		printf("Error opening SER_DATA_VAL file %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	fseek(SER_DATA_VAL, 0, SEEK_SET);
 
-	SR_CLOCK_VAL = fopen("/sys/class/gpio/gpio66/value", "w");
+	SR_CLOCK_VAL = fopen("/sys/class/gpio/gpio49/value", "w");
 	if (SR_CLOCK_VAL == NULL) {
 		printf("Error opening SR_CLOCK_VAL file %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	fseek(SR_CLOCK_VAL, 0, SEEK_SET);
 
-	LATCH_VAL = fopen("/sys/class/gpio/gpio69/value", "w");
+	LATCH_VAL = fopen("/sys/class/gpio/gpio115/value", "w");
 	if (LATCH_VAL == NULL) {
 		printf("Error opening LATCH_VAL file %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
@@ -439,6 +496,7 @@ void pointSetup(){
 	
 	fd_RXTX = serialport_init(RXTX_path, BAUDRATE);
 	printf("fd_RXTX = %i\n", fd_RXTX);
+	scannerInit();
 	setup = true;
 }
 

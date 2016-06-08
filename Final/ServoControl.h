@@ -6,7 +6,7 @@
 #include <errno.h>
 #include <stdbool.h>
 
-FILE *sys, *dirduty, *dirT;
+static FILE *sys, *dirduty, *dirT;
 
 // Initializes the PWM files used to control the servo
 bool servoInit();
